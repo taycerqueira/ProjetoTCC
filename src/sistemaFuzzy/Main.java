@@ -31,11 +31,11 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		
 		source = new DataSource (nomeBase + ".arff");
-	    Instances D = source.getDataSet();
+	    Instances data = source.getDataSet();
 	    //imprime informações associadas à base de dados
-	    int numInstancias = D.numInstances();
+	    int numInstancias = data.numInstances();
 	    System.out.println("* Quantidade de instâncias: " + numInstancias);  
-	    System.out.println("* Quantidade de atributos: " + D.numAttributes());
+	    System.out.println("* Quantidade de atributos: " + data.numAttributes());
 	    System.out.println("* Quantidade de conjuntos fuzzy por atributo: " + quantConjuntosFuzzy);
 		
 	    int quantidade = (int) (numInstancias*porcentagemTeste);
@@ -47,19 +47,21 @@ public class Main {
 	    //Pego as instancias de teste a partir de um arquivo 
 		int[] indicesTeste = getIndicesTeste(quantidade);
 		
+		FIS fis = new FIS();
+		
 		//Gera as regras usando wang-mendel e gera o arquivo .fcl
-		//wangMendel(indicesTeste);
+		wangMendel(indicesTeste, fis, source, 3, "polarity");
 		
 		//Cria o sistema fuzzy a partir do arquivo fcl
-		FIS fis = FIS.load((nomeBase+".fcl"), true);
+		/*FIS fis = FIS.load((nomeBase+".fcl"), true);
 
 		if (fis == null) {
 			System.err.println("Can't load file: '" + nomeBase + "'");
 			System.exit(1);
-		}
+		}*/
 		
 		//Testa o sistema
-		testarSistema(indicesTeste, fis);
+		//testarSistema(indicesTeste, fis);
 		
 		//JFuzzyChart.get().chart(fb);
 
@@ -89,29 +91,22 @@ public class Main {
 		
 	}
 	
-	public static void wangMendel(int[] indicesTeste){
+	public static void wangMendel(int[] indicesTeste, FIS fis, DataSource dados, int quant_regioes, String output_name){
 		
 		long inicio = System.currentTimeMillis(); 
 	    
 		try {
 		    
 		    System.out.println("=> Executando algoritmo de Wang-Mendel. Aguarde...");
-		    WangMendel wm = new WangMendel(source, quantConjuntosFuzzy, indicesTeste);
-		    ArrayList<Regra> regras = wm.gerarRegras();
+		    WangMendel wm = new WangMendel(source, indicesTeste);
+		    //ArrayList<Regra> regras = wm.gerarRegras();
 		    
-		    System.out.println("Quantidade de regras geradas: " + regras.size());
+		    FunctionBlock fb = wm.generateFunctionBlock(fis, "TESTE", dados, quant_regioes, output_name);
+		    
+		    System.out.println("Quantidade de regras geradas: " + fb.getFuzzyRuleBlock("ruleblock1").getRules().size());
 		    
 		    long fim  = System.currentTimeMillis();  
 		    System.out.println("* Tempo de execução (min/seg): " + new SimpleDateFormat("mm:ss").format(new Date(fim - inicio)));
-		    
-		    //Pega o nome do atributo que corresponde a classe. Aqui considero que esse atributo é sempre o último
-		    String nomeClasse = source.getDataSet().attribute(source.getDataSet().numAttributes() - 1).name();
-		    
-		    //Gera o bloco de regras em um arquivo .txt
-		    //gerarRuleblock(regras, nomeBase, nomeClasse);
-		    
-		    //Gera arquivo .fcl (fuzzy control language)
-		    gerarArquivoFcl(regras, nomeClasse, wm.getListaAtributos());   
 
 		    
 		} catch (Exception e) {
@@ -290,167 +285,6 @@ public class Main {
 		}
 		
 		return indices;
-		
-	}
-	
-	private static void gerarArquivoFcl(ArrayList<Regra> regras, String nomeClasse, ArrayList<Atributo> listaAtributos) throws IOException{
-		
-	    System.out.println("=> Gerando arquivo .fcl...");
-	    
-	    //Gerar arquivo contendo o RULEBLOCK para ser inserido em um arquivo .fcl
-	    FileWriter arquivo = new FileWriter(nomeBase + ".fcl"); 
-	    PrintWriter texto = new PrintWriter(arquivo);
-	    
-	    texto.println("FUNCTION_BLOCK " + nomeBase);
-	    
-	    texto.println("VAR_INPUT");  
-	    for(Atributo atributo : listaAtributos){
-	    	
-	    	//Atualmente a o JFuzzyLogic só dá suporte ao tipo REAL
-	    	texto.print("\t" + atributo.getNome() + " : REAL;\n"); 
-	    	
-	    }
-	    texto.println("END_VAR\n");
-	    
-	    texto.println("VAR_OUTPUT");
-	    	//Atualmente a o JFuzzyLogic só dá suporte ao tipo REAL
-	    	texto.print("\t" + nomeClasse + " : REAL;");
-	    texto.println("\nEND_VAR\n");
-	    
-	    for(Atributo atributo : listaAtributos){
-	    	
-	    	texto.println("FUZZIFY " + atributo.getNome());
-	    	//Os pontos dos conjuntos fuzzy são de pertinência triangular (3 pontos por conjunto)
-	    	for (ConjuntoFuzzy conjuntoFuzzy : atributo.getConjuntosFuzzy()) {	
-	    		texto.print("\t TERM ");
-	    		texto.print(conjuntoFuzzy.getIdConjunto());
-	    		texto.print(" := ");
-	    		texto.print("(" + conjuntoFuzzy.getLimiteInferior() + ", 0) ");
-	    		texto.print("(" + conjuntoFuzzy.getM() + ", 1) ");
-	    		texto.print("(" + conjuntoFuzzy.getLimiteSuperior() + ", 0);\n");
-			}
-	    	texto.println("END_FUZZIFY\n");
-	    
-	    }
-	    
-	    texto.println("DEFUZZIFY " + nomeClasse);
-	    //Termos utilizados para trabalhar com a base de filmes onde os termos da classe (polarity) são {positive, negative}
-	    //Como o JFuzzyLogica só trabalha com números reais, utilizarei {1, -1}, onde 1 é positivo e -1 negativo.
-	    texto.println("\t TERM positive := 1;");
-	    texto.println("\t TERM negative := -1;");
-	    //texto.println("\t TERM positive := (0,1) (1,0);");
-	    //texto.println("\t TERM negative := (0,0) (1,1);");
-	    //texto.println("\t METHOD : COG;"); // Use 'Center Of Gravity' defuzzification method
-	    texto.println("\t METHOD : COGS;"); // Centre of Gravity for Singletons
-	    //texto.println("\t DEFAULT := 0;"); // Default value is 0 (if no rule activates defuzzifier)
-	    texto.println("END_DEFUZZIFY\n");
-	    
-	    texto.println("RULEBLOCK No1");
-	    texto.println("\t AND : PROD;"); //Use 'min' or 'PROD' for 'and'
-	    texto.println("\t ACT : MIN;"); //Use 'min' activation method
-	    //texto.println("\t ACT : PROD;"); //Use 'Product' activation method
-	    texto.println("\t ACCU : MAX;\n"); //Use 'max' accumulation method
-	    
-	    //Regras
-	    int contadorRegra = 1;
-	    for (Regra regra : regras) {
-	    	
-	    	texto.print("\t RULE " + contadorRegra);
-	    	texto.print(" : IF ");
-	    	
-	    	boolean primeiroConjunto = true;
-	    	
-	    	for (ConjuntoFuzzy conjunto : regra.getAntecedentes()) {
-	    		
-	    		if(primeiroConjunto){
-	    			
-		    		texto.print(conjunto.getNomeAtributo());
-		    		texto.print(" IS ");
-		    		texto.print(conjunto.getIdConjunto());
-		    		
-		    		primeiroConjunto = false;
-	    			
-	    		}
-	    		else{
-	    			
-	    			texto.print(" AND ");
-		    		texto.print(conjunto.getNomeAtributo());
-		    		texto.print(" IS ");
-		    		texto.print(conjunto.getIdConjunto());
-	    			
-	    		}
-				
-			}
-	    	
-	    	texto.print(" THEN ");
-	    	texto.print(nomeClasse);
-	    	texto.print(" IS ");
-	    	texto.print(regra.getConsequente());
-	    	texto.print(";\n");
-	    	
-	    	contadorRegra++;
-			
-		}
-	     
-	    texto.println("END_RULEBLOCK\n");
-	    
-	    texto.println("END_FUNCTION_BLOCK");
-	    
-	    arquivo.close();
-	    System.out.println("Arquivo .fcl gerado com sucesso.");
-		
-	}
-	
-	private static void gerarRuleblock(String nomeBase, ArrayList<Regra> regras, String nomeClasse) throws IOException{
-		
-	    System.out.println("=> Gerando RULEBLOCK...");
-	    
-	    //Gerar arquivo contendo o RULEBLOCK para ser inserido em um arquivo .flc
-	    FileWriter arquivo = new FileWriter(nomeBase + ".txt"); 
-	    PrintWriter texto = new PrintWriter(arquivo);
-	    
-	    int contadorRegra = 1;
-	    for (Regra regra : regras) {
-	    	
-	    	texto.print("RULE " + contadorRegra);
-	    	texto.print(" : IF ");
-	    	
-	    	boolean primeiroConjunto = true;
-	    	
-	    	for (ConjuntoFuzzy conjunto : regra.getAntecedentes()) {
-	    		
-	    		if(primeiroConjunto){
-	    			
-		    		texto.print(conjunto.getNomeAtributo());
-		    		texto.print(" IS ");
-		    		texto.print(conjunto.getIdConjunto());
-		    		
-		    		primeiroConjunto = false;
-	    			
-	    		}
-	    		else{
-	    			
-	    			texto.print(" AND ");
-		    		texto.print(conjunto.getNomeAtributo());
-		    		texto.print(" IS ");
-		    		texto.print(conjunto.getIdConjunto());
-	    			
-	    		}
-
-			}
-	    	
-	    	texto.print(" THEN ");
-	    	texto.print(nomeClasse);
-	    	texto.print(" IS ");
-	    	texto.print(regra.getConsequente());
-	    	texto.print(";\n");
-	    	
-	    	contadorRegra++;
-			
-		}
-	    
-	    arquivo.close();
-	    System.out.println("Arquivo contendo o RULEBLOCK gerado com sucesso.");
 		
 	}
 	
