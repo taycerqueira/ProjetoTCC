@@ -1,13 +1,11 @@
 package sistemaFuzzy;
 
 import wangMendel.*;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,10 +13,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 import net.sourceforge.jFuzzyLogic.*;
+import net.sourceforge.jFuzzyLogic.rule.Rule;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
-import weka.experiment.Stats;
 
 public class Main {
 	
@@ -48,52 +46,20 @@ public class Main {
 		int[] indicesTeste = getIndicesTeste(quantidade);
 		
 		FIS fis = new FIS();
+		//fis.debug = true;
 		
 		//Gera as regras usando wang-mendel e gera o arquivo .fcl
 		wangMendel(indicesTeste, fis, source, 3, "polarity");
 		
-		//Cria o sistema fuzzy a partir do arquivo fcl
-		/*FIS fis = FIS.load((nomeBase+".fcl"), true);
-
-		if (fis == null) {
-			System.err.println("Can't load file: '" + nomeBase + "'");
-			System.exit(1);
-		}*/
-		
 		//Testa o sistema
-		//testarSistema(indicesTeste, fis);
-		
-		//JFuzzyChart.get().chart(fb);
-
-		// Set inputs
-		//fb.setVariable("temperatura", 965);
-		//fb.setVariable("volume", 11);
-
-		// Evaluate
-		//fb.evaluate();
-
-		// Show output variable's chart
-		//fb.getVariable("polarity").defuzzify();
-		
-
-        // Print ruleSet
-        //System.out.println(fis);
-		
-		// Print ruleSet
-		//System.out.println(fb);
-		//System.out.println("Pressão: " + fb.getVariable("pressao").getValue());
-		
-		//fis.getVariable("polarity").chartDefuzzifier(true);
-		
-		 // Show each rule (and degree of support)
-	    //for(Rule r : fis.getFunctionBlock("caldeira").getFuzzyRuleBlock("No1").getRules())
-	      //System.out.println(r);
+		testarSistema(indicesTeste, fis);
 		
 	}
 	
 	public static void wangMendel(int[] indicesTeste, FIS fis, DataSource dados, int quant_regioes, String output_name){
 		
 		long inicio = System.currentTimeMillis(); 
+		String functionBlockName = "base_filmes";
 	    
 		try {
 		    
@@ -101,7 +67,8 @@ public class Main {
 		    WangMendel wm = new WangMendel(source, indicesTeste);
 		    //ArrayList<Regra> regras = wm.gerarRegras();
 		    
-		    FunctionBlock fb = wm.generateFunctionBlock(fis, "TESTE", dados, quant_regioes, output_name);
+		    FunctionBlock fb = wm.generateFunctionBlock(fis, functionBlockName, dados, quant_regioes, output_name);
+		    fis.addFunctionBlock(functionBlockName, fb);
 		    
 		    System.out.println("Quantidade de regras geradas: " + fb.getFuzzyRuleBlock("ruleblock1").getRules().size());
 		    
@@ -119,7 +86,7 @@ public class Main {
 		
 		Instances instancias = source.getDataSet();
 		
-		System.out.println("=> Testando...");
+		System.out.println("=> Testando Sistema Fuzzy...");
 		
 		double TP = 0; //quantidade de positivos corretamente classificados
 		double TN = 0; //quantidade de negativos corretamente classificados
@@ -158,7 +125,7 @@ public class Main {
 				
 				int contRegrasAtivadas = 0;
 				
-			    for(net.sourceforge.jFuzzyLogic.rule.Rule r : fis.getFunctionBlock(null).getFuzzyRuleBlock("No1").getRules()){
+			    for(Rule r : fis.getFunctionBlock(null).getFuzzyRuleBlock(null).getRules()){
 			    	double grau = r.getDegreeOfSupport();
 			    	String classe = r.getConsequents().getFirst().getTermName();
 			    	if(grau > 0){ //Se a regra foi ativada

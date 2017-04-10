@@ -16,6 +16,8 @@ import net.sourceforge.jFuzzyLogic.rule.RuleBlock;
 import net.sourceforge.jFuzzyLogic.rule.RuleExpression;
 import net.sourceforge.jFuzzyLogic.rule.RuleTerm;
 import net.sourceforge.jFuzzyLogic.rule.Variable;
+import net.sourceforge.jFuzzyLogic.ruleAccumulationMethod.RuleAccumulationMethodMax;
+import net.sourceforge.jFuzzyLogic.ruleActivationMethod.RuleActivationMethodMin;
 import net.sourceforge.jFuzzyLogic.ruleConnectionMethod.RuleConnectionMethodAndMin;
 import weka.core.AttributeStats;
 import weka.core.Instance;
@@ -72,6 +74,8 @@ public class WangMendel {
 	public RuleBlock generateRuleBlock(FunctionBlock functionBlock, HashMap<String, Variable> variaveis, String output_name) throws Exception{
 		
 		RuleBlock ruleBlock = new RuleBlock(functionBlock);
+		ruleBlock.setRuleActivationMethod(new RuleActivationMethodMin());
+		ruleBlock.setRuleAccumulationMethod(new RuleAccumulationMethodMax());
 		
 		//Armazena o indice do atributo que corresponde a classe. Aqui considero que é sempre o último atributo.
 		int indiceClasse = dados.getDataSet().numAttributes() - 1; 
