@@ -2,12 +2,17 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="lib/jfuzzylogic"/>
-	<classpathentry kind="src" path="lib/jmetal"/>
+	<classpathentry kind="src" path="lib/jmetal">
+		<attributes>
+			<attribute name="ignore_optional_problems" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="lib" path="lib/weka.jar"/>
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/antlrworks-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/jcommon-1.0.14.jar"/>
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/jfreechart-1.0.11.jar"/>
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/junit_4.11.0.jar"/>
+	<classpathentry kind="lib" path="/SistemaFuzzy/lib/jFuzzyLogic.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

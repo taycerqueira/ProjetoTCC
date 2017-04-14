@@ -1,6 +1,5 @@
 package sistemaFuzzy;
 
-import wangMendel.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -14,6 +13,8 @@ import java.util.List;
 import java.util.Scanner;
 import net.sourceforge.jFuzzyLogic.*;
 import net.sourceforge.jFuzzyLogic.rule.Rule;
+import weka.classifiers.Classifier;
+import weka.classifiers.lazy.IBk;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
@@ -22,69 +23,131 @@ public class Main {
 	
 	//static String nomeBase = "basefilmes";
 	static String nomeBase = "basefilmes_53atributos";
-	static DataSource source;
 	static int quantConjuntosFuzzy = 3;
-	static double porcentagemTeste = 0.2;
+	static String classAttribute = "polarity";
+	static double porcentagemTeste = 0.3;
+	static boolean debug = false;
 	
 	public static void main(String[] args) throws Exception {
 		
-		source = new DataSource (nomeBase + ".arff");
+		DataSource source = new DataSource (nomeBase + ".arff");
 	    Instances data = source.getDataSet();
-	    //imprime informações associadas à base de dados
 	    int numInstancias = data.numInstances();
-	    System.out.println("* Quantidade de instâncias: " + numInstancias);  
+	    
+	    data.setClassIndex(data.numAttributes() - 1);
+	    
+	    System.out.println("* Quantidade de instâncias na base de dados: " + numInstancias);  
 	    System.out.println("* Quantidade de atributos: " + data.numAttributes());
 	    System.out.println("* Quantidade de conjuntos fuzzy por atributo: " + quantConjuntosFuzzy);
 		
 	    int quantidade = (int) (numInstancias*porcentagemTeste);
-	    System.out.println("Quantidade de instâncias de teste: " + quantidade);
 	    
-		//Separo as instâncias que irão ser utilizadas para teste
+		//Separo as instâncias que irão ser utilizadas para teste e gravo em uma arquivo de texto
 	    //gerarInidicesTeste(quantidade, numInstancias);
 	    
 	    //Pego as instancias de teste a partir de um arquivo 
-		int[] indicesTeste = getIndicesTeste(quantidade);
+		int[] indicesInstanciasTeste = getIndicesTeste(quantidade);
+		int[] indicesInstanciasTreinamento = getIndicesTreinamento(indicesInstanciasTeste, numInstancias);
 		
-		FIS fis = new FIS();
-		//fis.debug = true;
+		Instances instanciasTeste = getInstanciasTeste(new Instances(data), indicesInstanciasTreinamento);
+		Instances instanciasTreinamento = getInstanciasTreinamento(new Instances(data), indicesInstanciasTeste);
 		
-		//Gera as regras usando wang-mendel e gera o arquivo .fcl
-		wangMendel(indicesTeste, fis, source, 3, "polarity");
+		//Testa o sistema utilizando knn
+		testarBaseComKnn(instanciasTeste, instanciasTreinamento);
 		
-		//Testa o sistema
-		testarSistema(indicesTeste, fis);
+		//Testa o sistema utilizando fuzzy
+		testarBaseComFuzzy(instanciasTeste, instanciasTreinamento, SistemaFuzzy.INFERENCIA_GERAL);
 		
 	}
+
+
 	
-	public static void wangMendel(int[] indicesTeste, FIS fis, DataSource dados, int quant_regioes, String output_name){
+	private static void testarBaseComKnn(Instances instanciasTeste, Instances instanciasTreinamento) throws Exception{
 		
 		long inicio = System.currentTimeMillis(); 
-		String functionBlockName = "base_filmes";
-	    
-		try {
-		    
-		    System.out.println("=> Executando algoritmo de Wang-Mendel. Aguarde...");
-		    WangMendel wm = new WangMendel(source, indicesTeste);
-		    //ArrayList<Regra> regras = wm.gerarRegras();
-		    
-		    FunctionBlock fb = wm.generateFunctionBlock(fis, functionBlockName, dados, quant_regioes, output_name);
-		    fis.addFunctionBlock(functionBlockName, fb);
-		    
-		    System.out.println("Quantidade de regras geradas: " + fb.getFuzzyRuleBlock("ruleblock1").getRules().size());
-		    
-		    long fim  = System.currentTimeMillis();  
-		    System.out.println("* Tempo de execução (min/seg): " + new SimpleDateFormat("mm:ss").format(new Date(fim - inicio)));
+		
+		System.out.println("\n\n=> Testando a base de instâncias com o KNN...");
+		System.out.println("=> Tamanho da base de treinamento: " + instanciasTreinamento.numInstances());
+		System.out.println("=> Tamanho da base de teste: " + instanciasTeste.numInstances());
+		
+		double TP = 0; //quantidade de positivos corretamente classificados
+		double TN = 0; //quantidade de negativos corretamente classificados
+		
+		double FP = 0; //quantidade de negativos que foram classificados como positivos
+		double FN = 0; //quantidade de positivos que foram classificados como negativos
+		
+		Classifier ibk = new IBk();	
+		
+		ibk.buildClassifier(instanciasTreinamento);
+		
+		for (int i = 0; i < instanciasTeste.numInstances(); i++) {
+			
+			Instance instancia = instanciasTeste.get(i);
+			
+			String classeNominalReal = instanciasTeste.classAttribute().value((int) instanciasTeste.instance(i).classValue());
 
-		    
-		} catch (Exception e) {
-			e.printStackTrace();
+			double classe = ibk.classifyInstance(instancia);
+			String classeNominalPrevista = instanciasTeste.classAttribute().value((int) classe);
+			
+			if(debug){
+				
+				System.out.println("Classe Nominal Real: " + classeNominalReal);
+				System.out.println("Classe Nominal Prevista: " + classeNominalPrevista);
+				
+			}
+			
+			if(classeNominalPrevista.equals("positive")){
+				
+				if(classeNominalReal.equals("positive")){
+					TP++;
+				}
+				else if(classeNominalReal.equals("negative")){
+					FP++;
+				}
+				
+			}
+			else if(classeNominalPrevista.equals("negative")){
+				
+				if(classeNominalReal.equals("negative")){
+					TN++;
+				}
+				else if(classeNominalReal.equals("positive")){
+					FN++;
+				}
+			}	
+
 		}
+		
+		//System.out.println("Quantidade de instâncias testadas: " + indicesTeste.length);
+		System.out.println("Acertos: " + (TP + TN));
+		System.out.println("Erros: " + (FP + FN));
+		
+		double acuracia = (TP + TN)/instanciasTeste.numInstances();
+		System.out.println("Acurácia: " + acuracia);
+		
+		double TPR = TP/(TP + FN); // taxa de verdadeiros positivos
+		double TNR = TN/(TN + FP); // taxa de verdadeiros negativos
+		System.out.println("Taxa de verdadeiros positivos: " + TPR);
+		System.out.println("Taxa de verdadeiros negativos: " + TNR);
+		
+	    long fim  = System.currentTimeMillis();  
+	    System.out.println("* Tempo de execução do KNN (min:seg:mil): " + new SimpleDateFormat("mm:ss.SSS").format(new Date(fim - inicio)));
 		
 	}
 	
-	private static void testarSistema(int indicesTeste[], FIS fis) throws Exception{
+	private static void testarBaseComFuzzy(Instances instanciasTeste, Instances instanciasTreinamento, String inferenceType) throws Exception{
 		
-		Instances instancias = source.getDataSet();
+		long inicio = System.currentTimeMillis(); 
+		
+		System.out.println("\n\n=> Testando a base de instâncias com Sistema Fuzzy...");
+		System.out.println("=> Tamanho da base de treinamento: " + instanciasTreinamento.numInstances());
+		System.out.println("=> Tamanho da base de teste: " + instanciasTeste.numInstances());
+		
+		String functionBlockName = "functionBlock";
+		String ruleBlockName = "ruleBlock";
+		
+		SistemaFuzzy fuzzySystem = new SistemaFuzzy(instanciasTreinamento, quantConjuntosFuzzy, classAttribute);
+		FIS fis = fuzzySystem.generateFis(functionBlockName, ruleBlockName);
 		
 		System.out.println("=> Testando Sistema Fuzzy...");
 		
@@ -94,28 +157,34 @@ public class Main {
 		double FP = 0; //quantidade de negativos que foram classificados como positivos
 		double FN = 0; //quantidade de positivos que foram classificados como negativos
 		
-		for (int k = 0; k < source.getDataSet().size(); k++ ) {
-			//Se a instância for de teste...
-			if(isParaTeste(k, indicesTeste)){
+		for (int k = 0; k < instanciasTeste.numInstances(); k++) {
+			
+			//System.out.println("Número da instância: " + k);
+			Instance instancia = instanciasTeste.get(k);
+			
+			//System.out.println("Classe real: " + k);
+			String classeReal = instanciasTeste.classAttribute().value((int) instanciasTeste.instance(k).classValue());
+			
+			String classeInferida = null;
+			
+			//Seta as entradas
+			//Considerando que o último atributo é sempre o atributo que corresponde a classe da instância, por isso usa-se o -1
+			for (int i = 0; i < (instanciasTeste.numAttributes() - 1); i++) {
 				
-				//System.out.println("Número da instância: " + k);
-				Instance instancia = instancias.get(k);
-				//Seta as entradas
-				//Considerando que o último atributo é sempre o atributo que corresponde a classe da instância, por isso usa-se o -1
-				for (int i = 0; i < (instancias.numAttributes() - 1); i++) {
+				if(instanciasTeste.attribute(i).isNumeric()){
+	
+					String nomeAtributo = instanciasTeste.attribute(i).name();
+					double valor = instancia.value(i);
+					//System.out.println(nomeAtributo + ": " + valor);
 					
-					if(instancias.attribute(i).isNumeric()){
-
-						String nomeAtributo = instancias.attribute(i).name();
-						double valor = instancia.value(i);
-						//System.out.println(nomeAtributo + ": " + valor);
-						
-						fis.setVariable(nomeAtributo, valor);
-					}	
-				}
-
-				// Evaluate
-				fis.evaluate();
+					fis.setVariable(nomeAtributo, valor);
+				}	
+			}
+	
+			// Evaluate
+			fis.evaluate();
+			
+			if(inferenceType == SistemaFuzzy.INFERENCIA_GERAL){
 				
 				/************************** FUZZY GERAL *****************************/
 				int contPositive = 0;
@@ -125,21 +194,31 @@ public class Main {
 				
 				int contRegrasAtivadas = 0;
 				
-			    for(Rule r : fis.getFunctionBlock(null).getFuzzyRuleBlock(null).getRules()){
+			    for(Rule r : fis.getFunctionBlock(functionBlockName).getFuzzyRuleBlock(ruleBlockName).getRules()){
+			    	
 			    	double grau = r.getDegreeOfSupport();
 			    	String classe = r.getConsequents().getFirst().getTermName();
+			    	
 			    	if(grau > 0){ //Se a regra foi ativada
+			    		
 			    		contRegrasAtivadas++;
 				    	//System.out.println("indice: "+ k +" | grau: " + grau + " | classe: " + classe);
+			    		
 				    	if(classe.equals("positive")){
+				    		
 				    		contPositive++;
 				    		sumPositive += grau;
+				    		
 				    	}
 				    	else if(classe.equals("negative")){
+				    		
 				    		contNegative++;
 				    		sumNegative += grau;
+				    		
 				    	}
+				    	
 			    	}
+			    	
 			    }
 			    
 			    double mediaPositive = sumPositive/contPositive;
@@ -150,71 +229,65 @@ public class Main {
 			    //System.out.println("Media positive: " + mediaPositive);
 			    //System.out.println("Media negative: " + mediaNegative);
 			    
-			    String polarity = null;
 			    if(mediaPositive >= mediaNegative){
-			    	polarity = "positive";
+			    	
+			    	classeInferida = "positive";
+			    	
 			    }
 			    else{
-			    	polarity = "negative";
-			    }
-			    //System.out.println("Output: " + polarity);
-			    String realPolarity = instancia.stringValue(instancias.numAttributes() - 1);
-			    //System.out.println("Desired Output: " + realPolarity);
-				if(polarity.equals("positive")){
-					if(realPolarity.equals("positive")){
-						TP++;
-					}
-					else if(realPolarity.equals("negative")){
-						FP++;
-					}
-				}
-				else if(polarity.equals("negative")){
-					if(realPolarity.equals("negative")){
-						TN++;
-					}
-					else if(realPolarity.equals("positive")){
-						FN++;
-					}
-				}
-				/**********************************************************************/
+			    	
+			    	classeInferida = "negative";
+			    	
+			    }  
 				
-				//Variable tip = fis.getFunctionBlock(null).getVariable("polarity");
-				//JFuzzyChart.get().chart(tip, tip.getDefuzzifier(), true);
-				/************************** FUZZY CLÁSSICO *****************************/
-				/*String realPolarity = instancia.stringValue(instancias.numAttributes() - 1);
-				if(fis.getVariable("polarity").getValue() >= 0){
-					//System.out.println("Polarity: " + fis.getVariable("polarity").getValue() + "(POSITIVE)");
-					if(realPolarity.equals("positive")){
-						TP++;
-					}
-					else if(realPolarity.equals("negative")){
-						FP++;
-					}
-				}
-				else if(fis.getVariable("polarity").getValue() < 0){
-					//System.out.println("Polarity: " + fis.getVariable("polarity").getValue() + "(NEGATIVE)");
-					if(realPolarity.equals("negative")){
-						TN++;
-					}
-					else if(realPolarity.equals("positive")){
-						FN++;
-					}
-				}*/
-				/**********************************************************************/
-
-				//System.out.println("Real Polarity: " + realPolarity);
-				//JFuzzyChart.get().chart(fis.getFunctionBlock(null));
-				//System.out.println(fis);
-				//break;
-					
 			}
+			else if(inferenceType == SistemaFuzzy.INFERENCIA_CLASSICA){
+				
+			/************************** FUZZY CLÁSSICO *****************************/
+			
+			if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
+				
+				classeInferida = "positive";
+				
+			}
+			else {
+				
+				classeInferida = "negative";
+				
+			}
+			
+			/**********************************************************************/
+				
+			}
+			
+			if(classeInferida.equals("positive")){
+				
+				if(classeReal.equals("positive")){
+					TP++;
+				}
+				else if(classeReal.equals("negative")){
+					FP++;
+				}
+				
+			}
+			else if(classeInferida.equals("negative")){
+				
+				if(classeReal.equals("negative")){
+					TN++;
+				}
+				else if(classeReal.equals("positive")){
+					FN++;
+				}
+				
+			}
+
 		}
 		
 		//System.out.println("Quantidade de instâncias testadas: " + indicesTeste.length);
 		System.out.println("Acertos: " + (TP + TN));
 		System.out.println("Erros: " + (FP + FN));
 		
-		double acuracia = (TP + TN)/indicesTeste.length;
+		double acuracia = (TP + TN)/instanciasTeste.numInstances();
 		System.out.println("Acurácia: " + acuracia);
 		
 		double TPR = TP/(TP + FN); // taxa de verdadeiros positivos
@@ -222,18 +295,9 @@ public class Main {
 		System.out.println("Taxa de verdadeiros positivos: " + TPR);
 		System.out.println("Taxa de verdadeiros negativos: " + TNR);
 		
-	}
-	
-	private static boolean isParaTeste(int k, int[] indicesTeste){
+		long fim  = System.currentTimeMillis(); 
+		System.out.println("* Tempo de execução do Fuzzy (min:seg:mil): " + new SimpleDateFormat("mm:ss.SSS").format(new Date(fim - inicio)));
 		
-		boolean resultado = false;
-		for(int i = 0; i < indicesTeste.length; i++){
-			if(indicesTeste[i] == k){
-				resultado =  true;
-				break;
-			}
-		}
-		return resultado;
 	}
 	
 	private static int[] sortearInstanciasTeste(int quantidade, int numInstancias){
@@ -241,14 +305,21 @@ public class Main {
 		int[] indices = new int[quantidade];
 		
 		List<Integer> numeros = new ArrayList<Integer>();
+		
 		for (int i = 0; i < numInstancias; i++) { 
+			
 		    numeros.add(i);
+		    
 		}
+		
 		//Embaralhamos os números:
 		Collections.shuffle(numeros);
+		
 		//Adicionamos os números aleatórios no vetor
 		for (int i = 0; i < quantidade; i++) {
+			
 			indices[i] = numeros.get(i);
+			
 		}
 		
 		return indices;
@@ -273,6 +344,24 @@ public class Main {
 		
 	}
 	
+	private static boolean isParaTeste(int k, int[] indicesTeste){
+		
+		boolean resultado = false;
+		
+		for(int i = 0; i < indicesTeste.length; i++){
+			
+			if(indicesTeste[i] == k){
+				
+				resultado = true;
+				break;
+				
+			}
+			
+		}
+		
+		return resultado;
+	}
+	
 	//Lê o arquivo e retorna os indices de teste
 	public static int[] getIndicesTeste(int quantidade){
 		
@@ -293,8 +382,114 @@ public class Main {
 		  ex.printStackTrace();
 		}
 		
+		//System.out.println("Quantidade de instâncias de teste = " + indicesTeste.length);
+		
 		return indicesTeste;
 		
+	}
+	
+	public static int[] getIndicesTreinamento(int[] indicesInstanciasTeste, int numInstancias){
+		
+		int[] indicesTreinamento = new int[numInstancias - indicesInstanciasTeste.length];
+		
+		int cont = 0;
+		
+		for(int i = 0; i < numInstancias; i++){
+			
+			if(!isParaTeste(i, indicesInstanciasTeste)){
+				
+				indicesTreinamento[cont] = i;
+				cont++;
+				
+			}
+			
+		}
+		
+		//System.out.println("Quantidade de instâncias de treinamento = " + indicesTreinamento.length);
+		
+		return indicesTreinamento;
+		
+	}
+	
+	public static Instances getInstanciasTreinamento(Instances instancias, int[] indicesTeste){
+		
+		ArrayList<Instance> instanciasTeste = new ArrayList<Instance>();
+		
+		for(int i = 0; i < indicesTeste.length; i++){
+			instanciasTeste.add(instancias.get(i));			
+		}
+		
+		instancias.removeAll(instanciasTeste);
+			
+		//System.out.println("Quantidade de instâncias de treinamento = " + instancias.numInstances());
+		
+		return instancias;
+		
+	}
+	
+	public static Instances getInstanciasTeste(Instances instancias, int[] indicesTreinamento){
+		
+		ArrayList<Instance> instanciasTreinamento = new ArrayList<Instance>();
+		
+		for(int i = 0; i < indicesTreinamento.length; i++){
+			instanciasTreinamento.add(instancias.get(i));			
+		}
+		
+		instancias.removeAll(instanciasTreinamento);
+			
+		//System.out.println("Quantidade de instâncias de teste = " + instancias.numInstances());
+		
+		return instancias;
+		
+	}
+	
+	public static void testeKnn(Instances instancias, int[] indicesTeste){
+		
+		//Instances data = getInstanciasTreinamento(instancias, indicesTeste);
+		
+		Instances data = instancias;
+		
+		data.setClassIndex(data.numAttributes() - 1);
+		 
+		//do not use first and second
+		Instance teste1 = data.instance(0);
+		Instance teste2 = data.instance(5);
+		Instance teste3 = data.instance(10);
+		Instance teste4 = data.instance(15);
+		
+		System.out.println("Classe real da primeira: " + data.classAttribute().value((int) data.instance(0).classValue()));
+		System.out.println("Classe real da segunda: " + data.classAttribute().value((int) data.instance(5).classValue()));
+		System.out.println("Classe real da terceira: " + data.classAttribute().value((int) data.instance(10).classValue()));
+		System.out.println("Classe real da quarta: " + data.classAttribute().value((int) data.instance(15).classValue()));
+		
+		data.delete(0);
+		data.delete(5);
+		data.delete(10);
+		data.delete(15);
+ 
+		Classifier ibk = new IBk();		
+		
+		try {
+			
+			ibk.buildClassifier(data);
+			
+			double class1 = ibk.classifyInstance(teste1);
+			double class2 = ibk.classifyInstance(teste2);
+			double class3 = ibk.classifyInstance(teste3);
+			double class4 = ibk.classifyInstance(teste4);
+	 
+			System.out.println("\nClasse prevista da primeira: " + data.classAttribute().value((int) class1));
+			System.out.println("Classe prevista da segunda: " + data.classAttribute().value((int) class2));
+			System.out.println("Classe prevista da terceira: " + data.classAttribute().value((int) class3));
+			System.out.println("Classe prevista da quarta: " + data.classAttribute().value((int) class4));
+			
+		} catch (Exception e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}
+ 
 	}
 
 }
