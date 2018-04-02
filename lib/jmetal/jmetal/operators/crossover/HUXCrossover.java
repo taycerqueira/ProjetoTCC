@@ -33,6 +33,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import algoritmoGenetico.ArrayBinarySolutionType;
+
 /**
  * This class allows to apply a HUX crossover operator using two parent
  * solutions.
@@ -45,7 +47,8 @@ public class HUXCrossover extends Crossover{
    * Valid solution types to apply this operator 
    */
   private static final List VALID_TYPES = Arrays.asList(BinarySolutionType.class,
-  		                                            BinaryRealSolutionType.class) ;
+  		                                            BinaryRealSolutionType.class,
+  		                                            ArrayBinarySolutionType.class);
 
   private Double probability_ = null ;
   /**

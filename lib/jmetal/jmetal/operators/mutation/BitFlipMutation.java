@@ -34,6 +34,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import algoritmoGenetico.ArrayBinarySolutionType;
+
 /**
  * This class implements a bit flip mutation operator.
  * NOTE: the operator is applied to binary or integer solutions, considering the
@@ -45,7 +47,8 @@ public class BitFlipMutation extends Mutation {
    */
   private static final List VALID_TYPES = Arrays.asList(BinarySolutionType.class,
       BinaryRealSolutionType.class,
-      IntSolutionType.class) ;
+      IntSolutionType.class,
+      ArrayBinarySolutionType.class) ;
 
   private Double mutationProbability_ = null ;
   
@@ -68,7 +71,8 @@ public class BitFlipMutation extends Mutation {
 	public void doMutation(double probability, Solution solution) throws JMException {
 		try {
 			if ((solution.getType().getClass() == BinarySolutionType.class) ||
-					(solution.getType().getClass() == BinaryRealSolutionType.class)) {
+					(solution.getType().getClass() == BinaryRealSolutionType.class) ||
+					(solution.getType().getClass() == ArrayBinarySolutionType.class)) {
 				for (int i = 0; i < solution.getDecisionVariables().length; i++) {
 					for (int j = 0; j < ((Binary) solution.getDecisionVariables()[i]).getNumberOfBits(); j++) {
 						if (PseudoRandom.randDouble() < probability) {

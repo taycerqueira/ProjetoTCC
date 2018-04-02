@@ -3,6 +3,9 @@ package sistemaFuzzy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import jmetal.core.Solution;
+import jmetal.encodings.variable.Binary;
 import net.sourceforge.jFuzzyLogic.FunctionBlock;
 import net.sourceforge.jFuzzyLogic.membership.MembershipFunction;
 import net.sourceforge.jFuzzyLogic.rule.LinguisticTerm;
@@ -21,12 +24,35 @@ public class WangMendel {
 	
 	private Instances instancias;
 	private String classAttribute;
+	private Solution solution;
+	private boolean useSolution;
+	
+	//Quantidade de instâncias utilizadas para geração das regras
+	private int quantInstancias;
 	
 	public WangMendel(Instances instancias, String classAttribute) throws Exception{
 		
 		this.instancias = instancias;
 		this.classAttribute = classAttribute;
+		this.solution = null;
 
+	}
+
+	public WangMendel(Instances instancias, String classAttribute, Solution solution) throws Exception{
+		
+		this.instancias = instancias;
+		this.classAttribute = classAttribute;
+		this.solution = solution;
+
+	}
+	
+	private void setQuantInstancias(int quant){
+		this.quantInstancias = quant;
+	}
+	
+	//A quantidade de instancias só estará disponível após a execução do método "generateRuleBlock"
+	public int getQuantInstancias(){
+		return this.quantInstancias;
 	}
 	
 	public RuleBlock generateRuleBlock(String name, FunctionBlock functionBlock, HashMap<String, Variable> variaveis) throws Exception{
@@ -36,13 +62,21 @@ public class WangMendel {
 		ruleBlock.setRuleActivationMethod(new RuleActivationMethodMin());
 		ruleBlock.setRuleAccumulationMethod(new RuleAccumulationMethodMax());
 		
-		//Armazena o indice do atributo que corresponde a classe. Aqui considero que � sempre o �ltimo atributo.
+		//Armazena o indice do atributo que corresponde a classe. Aqui considero que � sempre o �ltimo atributo.
 		int indiceClasse = this.instancias.numAttributes() - 1; 
 		
 		int contInstancias = 0; 
 		
 		for (int k = 0; k < instancias.size(); k++ ) {
 			
+			//Caso o objeto possua uma solution, verifica se a instância faz parte da solução
+			if(this.solution != null){
+				Binary sol = (Binary) this.solution.getDecisionVariables()[0];
+				if (sol.getIth(k) == false) {
+					continue;
+				}
+			}
+				
 			contInstancias++;
 			
 			Instance instancia = instancias.get(k);
@@ -54,17 +88,17 @@ public class WangMendel {
 			
 			regra.addConsequent(output_variable, classeInstancia, false);
 			
-			//Come�a com 1 por ser um fator neutro na multiplica��o
+			//Começa com 1 por ser um fator neutro na multiplicação
 			double grauRegra = 1; 
 			
 			RuleExpression antecedents = null;
 			RuleTerm fuzzyRuleTerm1 = null;
 			ArrayList<LinguisticTerm> antecedentesConjuntosFuzzy = new ArrayList<LinguisticTerm>();
 			
-			//Pega cada atributo da inst�ncia
+			//Pega cada atributo da instância
 			for (int i = 0; i < indiceClasse; i++) {
 				
-				//Para cada atributo da inst�ncia, verifico o conjunto fuzzy de maior grau
+				//Para cada atributo da instância, verifico o conjunto fuzzy de maior grau
 				double maiorGrau = Double.NEGATIVE_INFINITY;
 				LinguisticTerm conjuntoMaiorGrau = null;	
 							
@@ -119,7 +153,7 @@ public class WangMendel {
 			
 			List<Rule> regrasExistentes = ruleBlock.getRules();
 			
-			//Verificar se existe uma regra j� adicionada com os mesmos antecedentes
+			//Verificar se existe uma regra já adicionada com os mesmos antecedentes
 			for (Rule r : regrasExistentes) {
 				
 				ArrayList<LinguisticTerm> antecedentes = r.getAntecedentesConjuntosFuzzy();
@@ -138,11 +172,11 @@ public class WangMendel {
 					
 				}
 				
-				if(cont == antecedentes.size()){ //regra em duplicidade. verificar qual pussui maior grau
+				if(cont == antecedentes.size()){ //regra em duplicidade. verificar qual possui maior grau
 					
 					if(r.getDegreeActivationWangMendel() < regra.getDegreeActivationWangMendel()){
 						
-						//Remover a regra j� existente e adicionar a nova regra
+						//Remover a regra já existente e adicionar a nova regra
 						ruleBlock.remove(r);
 						break;
 						
@@ -162,7 +196,8 @@ public class WangMendel {
 			}
 						
 		}
-					
+		
+		setQuantInstancias(contInstancias);		
 		return ruleBlock;
 		
 	}

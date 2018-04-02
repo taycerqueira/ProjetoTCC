@@ -13,6 +13,5 @@
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/jcommon-1.0.14.jar"/>
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/jfreechart-1.0.11.jar"/>
 	<classpathentry kind="lib" path="lib/jfuzzylogic/lib/junit_4.11.0.jar"/>
-	<classpathentry kind="lib" path="/SistemaFuzzy/lib/jFuzzyLogic.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

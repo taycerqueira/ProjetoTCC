@@ -1,6 +1,9 @@
 package sistemaFuzzy;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import jmetal.core.Solution;
+import jmetal.encodings.variable.Binary;
 import net.sourceforge.jFuzzyLogic.FIS;
 import net.sourceforge.jFuzzyLogic.FunctionBlock;
 import net.sourceforge.jFuzzyLogic.defuzzifier.DefuzzifierCenterOfGravitySingletons;
@@ -8,67 +11,425 @@ import net.sourceforge.jFuzzyLogic.membership.MembershipFunctionSingleton;
 import net.sourceforge.jFuzzyLogic.membership.MembershipFunctionTriangular;
 import net.sourceforge.jFuzzyLogic.membership.Value;
 import net.sourceforge.jFuzzyLogic.rule.LinguisticTerm;
+import net.sourceforge.jFuzzyLogic.rule.Rule;
 import net.sourceforge.jFuzzyLogic.rule.RuleBlock;
 import net.sourceforge.jFuzzyLogic.rule.Variable;
+import weka.core.Attribute;
 import weka.core.AttributeStats;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.experiment.Stats;
+import weka.core.converters.ConverterUtils.DataSource;
 
 public class SistemaFuzzy {
 	
-	private Instances instancias;
-	private int quantConjuntosFuzzy;
-	private String classAttribute;
+	private static int quantConjuntosFuzzy = 3;
 	private FIS fis;
+	private String inferenceType;
+	private String classAttribute;
+	private Solution solution;
 	
 	public static final java.lang.String INFERENCIA_GERAL = "geral";
 	public static final java.lang.String INFERENCIA_CLASSICA = "classica";
 	
-	public SistemaFuzzy(Instances instancias, int quantConjuntosFuzzy, String classAttribute) {
+	public static final java.lang.String FUNCTION_BLOCK_NAME = "functionBlock";
+	public static final java.lang.String RULE_BLOCK_NAME = "ruleBlock";
+	
+	public SistemaFuzzy(String inferenceType, String classAttribute){
 		
-		this.instancias = instancias;
-		this.quantConjuntosFuzzy = quantConjuntosFuzzy;
+		this.inferenceType = inferenceType;
 		this.classAttribute = classAttribute;
-		
 		fis = new FIS();
 		
 	}
 	
-	public FIS generateFis(String functionBlockName, String ruleBlockName){
+	public void setSolution(Solution solution){
+		this.solution = solution;
+	}
+	
+	public double calcAccuracy(Instances train, Instances test) throws Exception{
 		
+		WangMendel wm = new WangMendel(train, classAttribute);
+		FunctionBlock fb = generateFunctionBlock(train, wm);
 		
-		FunctionBlock fb = generateFunctionBlock(functionBlockName, ruleBlockName);
-		fis.addFunctionBlock(functionBlockName, fb);
-		
-		return fis;
+		return execute(train, test, fb);
 		
 	}
 	
-	private FunctionBlock generateFunctionBlock(String fbName, String rbName){
+	
+	/**
+	 * Este mÃ©todo treina gera a base de regras com wang-mendel utilizando as instÃ¢ncias presentes na solution
+	 */
+	public double calcAccuracySolution(Instances train, Instances test, Solution solution) throws Exception{
 		
-		System.out.println("* Gerando Function Block...");
+		WangMendel wm = new WangMendel(train, classAttribute, solution);
+		FunctionBlock fb = generateFunctionBlock(train, wm);
+		
+		return execute(train, test, fb);
+		
+	}
+	
+	/**
+	 * Este mÃ©todo treina gera a base de regras com wang-mendel utilizando as instÃ¢ncias presentes na solution
+	 */
+	public double[] calcAccuracyAndReductionSolution(Instances train, Instances test, Solution solution) throws Exception{
+		
+		double[] resultado = new double[2];
+		
+		WangMendel wm = new WangMendel(train, classAttribute, solution);
+		FunctionBlock fb = generateFunctionBlock(train, wm);
+		
+		resultado[0] = execute(train, test, fb);
+		resultado[1] = (train.size() - wm.getQuantInstancias()) / (double) train.size();
+		
+		return resultado;
+		
+	}
+	
+	/*public double calcAccuracySolution(Instances train, Instances test, Solution solution) throws Exception{
+		
+		Binary sol = (Binary) solution.getDecisionVariables()[0];
+		int bits = sol.getNumberOfBits();
+
+		System.out.println("Testing Fuzzy System...");
+		//System.out.println("=> Tamanho da base de teste: " + instancias.numInstances());
+		
+		Instances trainSolution = new Instances(train);
+		
+		System.out.println("quantidade de bits: " + bits);
+		System.out.println("tamanho da base de treinamento: " + trainSolution.size());
+		//System.exit(0);
+		
+		//System.out.println("tamanho da base de otimizada: " + trainOtimizada.size());
+		
+		//Cada instÃ¢ncia ï¿½ uma posiï¿½ï¿½o no cromossomo (indice do cromossomo ï¿½ o ï¿½ndice da instÃ¢ncia)
+		for (int i = 0; i < bits; i++) {		
+			
+			if (sol.getIth(i) == false) {//Se a instÃ¢ncia nï¿½o faz parte da base otimizada, removo ela
+				
+				//trainSolution.remove(i);
+				trainSolution.remove(i);
+				
+			}
+
+		}
+		
+		System.out.println("tamanho da base otimizada: " + trainSolution.size());
+		System.exit(0);
+		
+		double acuracia = execute(trainSolution, test);
+		
+		return acuracia;
+		
+	}*/
+	
+	//Retorna a acurÃ¡cia
+	private double execute(Instances train, Instances test, FunctionBlock fb){
+		
+		fis.addFunctionBlock(SistemaFuzzy.FUNCTION_BLOCK_NAME, fb);
+		
+		double TP = 0; //quantidade de positivos corretamente classificados
+		double TN = 0; //quantidade de negativos corretamente classificados
+		
+		double FP = 0; //quantidade de negativos que foram classificados como positivos
+		double FN = 0; //quantidade de positivos que foram classificados como negativos
+		
+		for (int k = 0; k < test.numInstances(); k++) {
+			
+			//System.out.println("NÃºmero da instÃ¢ncia: " + k);
+			Instance instancia = test.get(k);
+			
+			//System.out.println("Classe real: " + k);
+			String classeReal = test.classAttribute().value((int) test.instance(k).classValue());
+			
+			String classeInferida = null;
+			
+			//Seta as entradas
+			//Considerando que o Ãºltimo atributo ï¿½ sempre o atributo que corresponde a classe da instÃ¢ncia, por isso usa-se o -1
+			for (int i = 0; i < (test.numAttributes() - 1); i++) {
+				
+				if(test.attribute(i).isNumeric()){
+	
+					String nomeAtributo = test.attribute(i).name();
+					double valor = instancia.value(i);
+					//System.out.println(nomeAtributo + ": " + valor);
+					
+					fis.setVariable(nomeAtributo, valor);
+				}	
+			}
+	
+			// Evaluate
+			fis.evaluate();
+			
+			if(inferenceType == SistemaFuzzy.INFERENCIA_GERAL){
+				
+				/************************** FUZZY GERAL *****************************/
+				int contPositive = 0;
+				double sumPositive = 0;
+				int contNegative = 0;
+				double sumNegative = 0;
+				
+				int contRegrasAtivadas = 0;
+				
+			    for(Rule r : fis.getFunctionBlock(SistemaFuzzy.FUNCTION_BLOCK_NAME).getFuzzyRuleBlock(SistemaFuzzy.RULE_BLOCK_NAME).getRules()){
+			    	
+			    	double grau = r.getDegreeOfSupport();
+			    	String classe = r.getConsequents().getFirst().getTermName();
+			    	
+			    	if(grau > 0){ //Se a regra foi ativada
+			    		
+			    		contRegrasAtivadas++;
+				    	//System.out.println("indice: "+ k +" | grau: " + grau + " | classe: " + classe);
+			    		
+				    	if(classe.equals("positive")){
+				    		
+				    		contPositive++;
+				    		sumPositive += grau;
+				    		
+				    	}
+				    	else if(classe.equals("negative")){
+				    		
+				    		contNegative++;
+				    		sumNegative += grau;
+				    		
+				    	}
+				    	
+			    	}
+			    	
+			    }
+			    
+			    double mediaPositive = sumPositive/contPositive;
+			    double mediaNegative = sumNegative/contNegative;
+			    
+			    //System.out.println("sum negative: " + sumNegative + " | contNegative: " + contNegative);
+			    //System.out.println("Quantidade de regras ativadas: " + contRegrasAtivadas);
+			    //System.out.println("Media positive: " + mediaPositive);
+			    //System.out.println("Media negative: " + mediaNegative);
+			    
+			    if(mediaPositive >= mediaNegative){
+			    	
+			    	classeInferida = "positive";
+			    	
+			    }
+			    else{
+			    	
+			    	classeInferida = "negative";
+			    	
+			    }  
+				
+			}
+			else if(inferenceType == SistemaFuzzy.INFERENCIA_CLASSICA){
+				
+				/************************** FUZZY CLSSICO *****************************/
+				
+				if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
+					
+					classeInferida = "positive";
+					
+				}
+				else {
+					
+					classeInferida = "negative";
+					
+				}
+				
+				/**********************************************************************/
+				
+			}
+			
+			if(classeInferida.equals("positive")){
+				
+				if(classeReal.equals("positive")){
+					TP++;
+				}
+				else if(classeReal.equals("negative")){
+					FP++;
+				}
+				
+			}
+			else if(classeInferida.equals("negative")){
+				
+				if(classeReal.equals("negative")){
+					TN++;
+				}
+				else if(classeReal.equals("positive")){
+					FN++;
+				}
+				
+			}
+
+		}
+		
+		//System.out.println("	Acertos: " + (TP + TN));
+		//System.out.println("	Erros: " + (FP + FN));
+		
+		double acuracia = (TP + TN)/test.numInstances();
+		//System.out.println("AcurÃ¡cia: " + acuracia);
+		
+		return acuracia;
+		
+	}
+	
+	private String classificaInstancia(Instances instancias, WangMendel wm, int k, String inferenceType){
+		
+		String functionBlockName = "functionBlock";
+		String ruleBlockName = "ruleBlock";
+		
+		FunctionBlock fb = generateFunctionBlock(instancias, wm);
+		fis.addFunctionBlock(functionBlockName, fb);
+		
+		//System.out.println("NÃºmero da instÃ¢ncia: " + k);
+		Instance instancia = instancias.get(k);
+		
+		//System.out.println("Classe real: " + k);
+		String classeReal = instancias.classAttribute().value((int) instancias.instance(k).classValue());
+		
+		String classeInferida = null;
+		
+		//Seta as entradas
+		//Considerando que o Ãºltimo atributo ï¿½ sempre o atributo que corresponde a classe da instÃ¢ncia, por isso usa-se o -1
+		for (int i = 0; i < (instancias.numAttributes() - 1); i++) {
+			
+			if(instancias.attribute(i).isNumeric()){
+
+				String nomeAtributo = instancias.attribute(i).name();
+				double valor = instancia.value(i);
+				//System.out.println(nomeAtributo + ": " + valor);
+				
+				fis.setVariable(nomeAtributo, valor);
+			}	
+		}
+
+		// Evaluate
+		fis.evaluate();
+		
+		String resultado = "";
+		
+		if(inferenceType == SistemaFuzzy.INFERENCIA_GERAL){
+			
+			/************************** FUZZY GERAL *****************************/
+			int contPositive = 0;
+			double sumPositive = 0;
+			int contNegative = 0;
+			double sumNegative = 0;
+			
+			int contRegrasAtivadas = 0;
+			
+		    for(Rule r : fis.getFunctionBlock(functionBlockName).getFuzzyRuleBlock(ruleBlockName).getRules()){
+		    	
+		    	double grau = r.getDegreeOfSupport();
+		    	String classe = r.getConsequents().getFirst().getTermName();
+		    	
+		    	if(grau > 0){ //Se a regra foi ativada
+		    		
+		    		contRegrasAtivadas++;
+			    	//System.out.println("indice: "+ k +" | grau: " + grau + " | classe: " + classe);
+		    		
+			    	if(classe.equals("positive")){
+			    		
+			    		contPositive++;
+			    		sumPositive += grau;
+			    		
+			    	}
+			    	else if(classe.equals("negative")){
+			    		
+			    		contNegative++;
+			    		sumNegative += grau;
+			    		
+			    	}
+			    	
+		    	}
+		    	
+		    }
+		    
+		    double mediaPositive = sumPositive/contPositive;
+		    double mediaNegative = sumNegative/contNegative;
+		    
+		    //System.out.println("sum negative: " + sumNegative + " | contNegative: " + contNegative);
+		    //System.out.println("Quantidade de regras ativadas: " + contRegrasAtivadas);
+		    //System.out.println("Media positive: " + mediaPositive);
+		    //System.out.println("Media negative: " + mediaNegative);
+		    
+		    if(mediaPositive >= mediaNegative){
+		    	
+		    	classeInferida = "positive";
+		    	
+		    }
+		    else{
+		    	
+		    	classeInferida = "negative";
+		    	
+		    }  
+			
+		}
+		else if(inferenceType == SistemaFuzzy.INFERENCIA_CLASSICA){
+			
+			/************************** FUZZY CLSSICO *****************************/
+			
+			if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
+				
+				classeInferida = "positive";
+				
+			}
+			else {
+				
+				classeInferida = "negative";
+				
+			}
+			
+			/**********************************************************************/
+			
+		}
+		
+		if(classeInferida.equals("positive")){
+			
+			if(classeReal.equals("positive")){
+				resultado = "TP";
+			}
+			else if(classeReal.equals("negative")){
+				resultado = "FP";
+			}
+			
+		}
+		else if(classeInferida.equals("negative")){
+			
+			if(classeReal.equals("negative")){
+				resultado = "TN";
+			}
+			else if(classeReal.equals("positive")){
+				resultado = "FN";
+			}
+			
+		}
+		
+		return resultado;
+		
+	}
+	
+	private FunctionBlock generateFunctionBlock(Instances instancias, WangMendel wm){
+		
+		//System.out.println("* Gerando Function Block...");
 		
 		try {
 			
 			FunctionBlock functionBlock = new FunctionBlock(fis);
-			functionBlock.setName(fbName);
+			functionBlock.setName(SistemaFuzzy.FUNCTION_BLOCK_NAME);
 			
-			HashMap<String, Variable> variaveis = getAtributos();
+			HashMap<String, Variable> variaveis = getAtributos(instancias);
 			
-			//Configurando o bloco de variáveis
+			//Configurando o bloco de variÃ¡veis
 			functionBlock.setVariables(variaveis);
 			
 			//Configurando o bloco de regras
-			WangMendel wm = new WangMendel(instancias, classAttribute);
-			RuleBlock ruleBlock = wm.generateRuleBlock(rbName, functionBlock, variaveis);
+			RuleBlock ruleBlock = wm.generateRuleBlock(SistemaFuzzy.RULE_BLOCK_NAME, functionBlock, variaveis);
 			
-			System.out.println("Quantidade de regras geradas: " + ruleBlock.getRules().size());
+			//System.out.println("	Tamanho da base de regras: " + ruleBlock.getRules().size());
 			
 			HashMap<String, RuleBlock> ruleBlocks = new HashMap<String, RuleBlock>();
-			ruleBlocks.put(rbName, ruleBlock);
+			ruleBlocks.put(SistemaFuzzy.RULE_BLOCK_NAME, ruleBlock);
 			functionBlock.setRuleBlocks(ruleBlocks);
 		    
-		    System.out.println("* Function Block gerado com sucesso");
+		    //System.out.println("* Function Block gerado com sucesso");
 			
 			return functionBlock;
 			
@@ -81,16 +442,15 @@ public class SistemaFuzzy {
 		
 	}
 	
-	private HashMap<String, Variable> getAtributos() throws Exception{
+	private HashMap<String, Variable> getAtributos(Instances instancias) throws Exception{
 		
 		HashMap<String, Variable> variables = new HashMap<String, Variable>();
 		
-		//Considerando que o último atributo é sempre o atributo que corresponde a classe da instância, por isso usa-se o -1
-		for (int i = 0; i < this.instancias.numAttributes(); i++) {
+		for (int i = 0; i < instancias.numAttributes(); i++) {
 			
 			String nomeAtributo = instancias.attribute(i).name();
 			
-			if(nomeAtributo.equals(classAttribute)){ //variável de saída
+			if(nomeAtributo.equals(classAttribute)){ //variï¿½vel de saï¿½da
 				
 				Variable output_variable = new Variable(nomeAtributo);
 				
@@ -115,7 +475,7 @@ public class SistemaFuzzy {
 				
 				
 			}
-			else{ //variáveis de entrada
+			else{ //variï¿½veis de entrada
 				
 				if(instancias.attribute(i).isNumeric()){
 					
@@ -123,8 +483,8 @@ public class SistemaFuzzy {
 					Stats s = as.numericStats;	
 					
 					/*System.out.println("Atributo: " + instancias.attribute(i).name());
-					System.out.println("Valor mínimo: " + s.min);
-					System.out.println("Valor máximo: " + s.max);*/		
+					System.out.println("Valor mï¿½nimo: " + s.min);
+					System.out.println("Valor mï¿½ximo: " + s.max);*/		
 
 					Variable variable = buildVariavel(nomeAtributo, s.min, s.max);
 					variables.put(nomeAtributo, variable);
@@ -152,7 +512,7 @@ public class SistemaFuzzy {
 		double inf = min - range;
 		double sup = min + range;
 	
-		//Definição dos limites das regiões de pertinencia triangular
+		//Definiï¿½ï¿½o dos limites das regiï¿½es de pertinencia triangular
 		for(int i = 0; i < quantConjuntosFuzzy; i++){
 			
 			Value ponto_minimo = new Value();

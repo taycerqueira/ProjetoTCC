@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 import net.sourceforge.jFuzzyLogic.*;
 import net.sourceforge.jFuzzyLogic.rule.Rule;
@@ -40,23 +41,25 @@ public class Main {
 	    System.out.println("* Quantidade de atributos: " + data.numAttributes());
 	    System.out.println("* Quantidade de conjuntos fuzzy por atributo: " + quantConjuntosFuzzy);
 		
-	    int quantidade = (int) (numInstancias*porcentagemTeste);
+	   // int quantidade = (int) (numInstancias*porcentagemTeste);
 	    
 		//Separo as instâncias que irão ser utilizadas para teste e gravo em uma arquivo de texto
 	    //gerarInidicesTeste(quantidade, numInstancias);
 	    
 	    //Pego as instancias de teste a partir de um arquivo 
-		int[] indicesInstanciasTeste = getIndicesTeste(quantidade);
-		int[] indicesInstanciasTreinamento = getIndicesTreinamento(indicesInstanciasTeste, numInstancias);
+		//int[] indicesInstanciasTeste = getIndicesTeste(quantidade);
+		//int[] indicesInstanciasTreinamento = getIndicesTreinamento(indicesInstanciasTeste, numInstancias);
 		
-		Instances instanciasTeste = getInstanciasTeste(new Instances(data), indicesInstanciasTreinamento);
-		Instances instanciasTreinamento = getInstanciasTreinamento(new Instances(data), indicesInstanciasTeste);
+		//Instances instanciasTeste = getInstanciasTeste(new Instances(data), indicesInstanciasTreinamento);
+		//Instances instanciasTreinamento = getInstanciasTreinamento(new Instances(data), indicesInstanciasTeste);
 		
 		//Testa o sistema utilizando knn
-		testarBaseComKnn(instanciasTeste, instanciasTreinamento);
+		//testarBaseComKnn(instanciasTeste, instanciasTreinamento);
 		
 		//Testa o sistema utilizando fuzzy
-		testarBaseComFuzzy(instanciasTeste, instanciasTreinamento, SistemaFuzzy.INFERENCIA_GERAL);
+		//testarBaseComFuzzy(instanciasTeste, instanciasTreinamento, SistemaFuzzy.INFERENCIA_GERAL);
+		
+		validarFuzzy(data);
 		
 	}
 
@@ -135,7 +138,50 @@ public class Main {
 		
 	}
 	
-	private static void testarBaseComFuzzy(Instances instanciasTeste, Instances instanciasTreinamento, String inferenceType) throws Exception{
+	private static void validarFuzzy(Instances data) throws Exception{
+		
+		double[][] resultados = new double[10][3];
+		
+		 int seed = 1;          // the seed for randomizing the data
+		 int folds = 10;         // the number of folds to generate, >=2
+		 
+		 Random rand = new Random(seed);   // create seeded number generator
+		 Instances randData = new Instances(data);   // create copy of original data
+		 randData.randomize(rand);         // randomize data with number generator
+		 
+		 randData.stratify(folds);
+		 
+		 double somaAcuracias = 0;
+
+		 for (int n = 0; n < folds; n++) {
+			 
+		   Instances train = randData.trainCV(folds, n);
+		   Instances test = randData.testCV(folds, n);
+		 
+		   resultados[n] = testarBaseComFuzzy(test, train, SistemaFuzzy.INFERENCIA_GERAL);
+		   
+		   somaAcuracias += resultados[n][0];
+		   
+		 }
+		 
+		 double mediaAcuracias = somaAcuracias/10;
+		
+		double somatorio = 0l;
+		
+		for (int i = 0; i < 10; i++) {
+			double valor = resultados[i][0];
+			double result =  valor - mediaAcuracias;
+			somatorio = somatorio + (result * result);
+		}
+		
+		double desvioPadrao = Math.sqrt(((double) 1 /( 10-1))* somatorio);
+		 
+		System.out.println("media acuracias: " + mediaAcuracias);
+		System.out.println("desvio padrão: " + desvioPadrao);
+		
+	}
+	
+	private static double[] testarBaseComFuzzy(Instances instanciasTeste, Instances instanciasTreinamento, String inferenceType) throws Exception{
 		
 		long inicio = System.currentTimeMillis(); 
 		
@@ -146,8 +192,8 @@ public class Main {
 		String functionBlockName = "functionBlock";
 		String ruleBlockName = "ruleBlock";
 		
-		SistemaFuzzy fuzzySystem = new SistemaFuzzy(instanciasTreinamento, quantConjuntosFuzzy, classAttribute);
-		FIS fis = fuzzySystem.generateFis(functionBlockName, ruleBlockName);
+		SistemaFuzzy fuzzySystem = new SistemaFuzzy();
+		FIS fis = fuzzySystem.generateFis(functionBlockName, ruleBlockName, instanciasTreinamento, 3);
 		
 		System.out.println("=> Testando Sistema Fuzzy...");
 		
@@ -243,20 +289,20 @@ public class Main {
 			}
 			else if(inferenceType == SistemaFuzzy.INFERENCIA_CLASSICA){
 				
-			/************************** FUZZY CLÁSSICO *****************************/
-			
-			if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
+				/************************** FUZZY CLÁSSICO *****************************/
 				
-				classeInferida = "positive";
+				if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
+					
+					classeInferida = "positive";
+					
+				}
+				else {
+					
+					classeInferida = "negative";
+					
+				}
 				
-			}
-			else {
-				
-				classeInferida = "negative";
-				
-			}
-			
-			/**********************************************************************/
+				/**********************************************************************/
 				
 			}
 			
@@ -283,7 +329,6 @@ public class Main {
 
 		}
 		
-		//System.out.println("Quantidade de instâncias testadas: " + indicesTeste.length);
 		System.out.println("Acertos: " + (TP + TN));
 		System.out.println("Erros: " + (FP + FN));
 		
@@ -297,6 +342,13 @@ public class Main {
 		
 		long fim  = System.currentTimeMillis(); 
 		System.out.println("* Tempo de execução do Fuzzy (min:seg:mil): " + new SimpleDateFormat("mm:ss.SSS").format(new Date(fim - inicio)));
+		
+		double[] resultado = new double[3];
+		resultado[0] = acuracia;
+		resultado[1] = TPR;
+		resultado[2] = TNR;
+		
+		return resultado;
 		
 	}
 	
