@@ -197,6 +197,8 @@ public class WangMendel {
 						
 		}
 		
+		System.out.println("	Quantidade de instâncias: " + contInstancias);
+		System.out.println("	Quantidade de regras geradas: " + ruleBlock.getRules().size());
 		setQuantInstancias(contInstancias);		
 		return ruleBlock;
 		

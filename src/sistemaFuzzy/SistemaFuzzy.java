@@ -27,7 +27,6 @@ public class SistemaFuzzy {
 	private FIS fis;
 	private String inferenceType;
 	private String classAttribute;
-	private Solution solution;
 	
 	public static final java.lang.String INFERENCIA_GERAL = "geral";
 	public static final java.lang.String INFERENCIA_CLASSICA = "classica";
@@ -43,16 +42,12 @@ public class SistemaFuzzy {
 		
 	}
 	
-	public void setSolution(Solution solution){
-		this.solution = solution;
-	}
-	
 	public double calcAccuracy(Instances train, Instances test) throws Exception{
 		
 		WangMendel wm = new WangMendel(train, classAttribute);
 		FunctionBlock fb = generateFunctionBlock(train, wm);
 		
-		return execute(train, test, fb);
+		return execute(test, fb);
 		
 	}
 	
@@ -65,7 +60,7 @@ public class SistemaFuzzy {
 		WangMendel wm = new WangMendel(train, classAttribute, solution);
 		FunctionBlock fb = generateFunctionBlock(train, wm);
 		
-		return execute(train, test, fb);
+		return execute(test, fb);
 		
 	}
 	
@@ -79,7 +74,7 @@ public class SistemaFuzzy {
 		WangMendel wm = new WangMendel(train, classAttribute, solution);
 		FunctionBlock fb = generateFunctionBlock(train, wm);
 		
-		resultado[0] = execute(train, test, fb);
+		resultado[0] = execute(test, fb);
 		resultado[1] = (train.size() - wm.getQuantInstancias()) / (double) train.size();
 		
 		return resultado;
@@ -124,7 +119,7 @@ public class SistemaFuzzy {
 	}*/
 	
 	//Retorna a acurácia
-	private double execute(Instances train, Instances test, FunctionBlock fb){
+	private double execute(Instances instancias, FunctionBlock fb){
 		
 		fis.addFunctionBlock(SistemaFuzzy.FUNCTION_BLOCK_NAME, fb);
 		
@@ -134,23 +129,25 @@ public class SistemaFuzzy {
 		double FP = 0; //quantidade de negativos que foram classificados como positivos
 		double FN = 0; //quantidade de positivos que foram classificados como negativos
 		
-		for (int k = 0; k < test.numInstances(); k++) {
+		String[] classValues = getClassValues(instancias);
+		
+		for (int k = 0; k < instancias.numInstances(); k++) {
 			
 			//System.out.println("Número da instância: " + k);
-			Instance instancia = test.get(k);
+			Instance instancia = instancias.get(k);
 			
 			//System.out.println("Classe real: " + k);
-			String classeReal = test.classAttribute().value((int) test.instance(k).classValue());
+			String classeReal = instancias.classAttribute().value((int) instancias.instance(k).classValue());
 			
 			String classeInferida = null;
 			
 			//Seta as entradas
 			//Considerando que o último atributo � sempre o atributo que corresponde a classe da instância, por isso usa-se o -1
-			for (int i = 0; i < (test.numAttributes() - 1); i++) {
+			for (int i = 0; i < (instancias.numAttributes() - 1); i++) {
 				
-				if(test.attribute(i).isNumeric()){
+				if(instancias.attribute(i).isNumeric()){
 	
-					String nomeAtributo = test.attribute(i).name();
+					String nomeAtributo = instancias.attribute(i).name();
 					double valor = instancia.value(i);
 					//System.out.println(nomeAtributo + ": " + valor);
 					
@@ -169,6 +166,9 @@ public class SistemaFuzzy {
 				int contNegative = 0;
 				double sumNegative = 0;
 				
+				int[] cont = getContadorInt(classValues.length);
+				double[] sum = getContadorDouble(classValues.length);
+				
 				int contRegrasAtivadas = 0;
 				
 			    for(Rule r : fis.getFunctionBlock(SistemaFuzzy.FUNCTION_BLOCK_NAME).getFuzzyRuleBlock(SistemaFuzzy.RULE_BLOCK_NAME).getRules()){
@@ -181,228 +181,138 @@ public class SistemaFuzzy {
 			    		contRegrasAtivadas++;
 				    	//System.out.println("indice: "+ k +" | grau: " + grau + " | classe: " + classe);
 			    		
-				    	if(classe.equals("positive")){
-				    		
-				    		contPositive++;
-				    		sumPositive += grau;
-				    		
-				    	}
-				    	else if(classe.equals("negative")){
-				    		
-				    		contNegative++;
-				    		sumNegative += grau;
-				    		
-				    	}
+//				    	if(classe.equals("positive")){
+//				    		
+//				    		contPositive++;
+//				    		sumPositive += grau;
+//				    		
+//				    	}
+//				    	else if(classe.equals("negative")){
+//				    		
+//				    		contNegative++;
+//				    		sumNegative += grau;
+//				    		
+//				    	}
+			    		
+
+//			    		System.out.println("classe: " + classe);
+			    		for (int i = 0; i < classValues.length; i++) {
+//			    			System.out.println("	possibilidade: " + classValues[i]);
+							if(classe.equals(classValues[i])){
+//								System.out.println("		mactch!: " + classValues[i]);
+								cont[i]++;
+								sum[i] += grau;
+								break;
+							}
+						}
+
 				    	
 			    	}
 			    	
 			    }
 			    
-			    double mediaPositive = sumPositive/contPositive;
-			    double mediaNegative = sumNegative/contNegative;
+//			    double mediaPositive = sumPositive/contPositive;
+//			    double mediaNegative = sumNegative/contNegative;
+//			    
+//			    //System.out.println("sum negative: " + sumNegative + " | contNegative: " + contNegative);
+//			    //System.out.println("Quantidade de regras ativadas: " + contRegrasAtivadas);
+//			    //System.out.println("Media positive: " + mediaPositive);
+//			    //System.out.println("Media negative: " + mediaNegative);
+//			    
+//			    if(mediaPositive >= mediaNegative){
+//			    	
+//			    	classeInferida = "positive";
+//			    	
+//			    }
+//			    else{
+//			    	
+//			    	classeInferida = "negative";
+//			    	
+//			    }  
 			    
-			    //System.out.println("sum negative: " + sumNegative + " | contNegative: " + contNegative);
-			    //System.out.println("Quantidade de regras ativadas: " + contRegrasAtivadas);
-			    //System.out.println("Media positive: " + mediaPositive);
-			    //System.out.println("Media negative: " + mediaNegative);
+			    //calcula as medias
+//			    System.out.println(classValues.length);
+//			    System.exit(0);
+			    double[] medias = getContadorDouble(classValues.length);
+			    for (int i = 0; i < classValues.length; i++) {
+			    	if(cont[i] != 0){
+			    		medias[i] = sum[i]/cont[i];
+			    	}
+				}
 			    
-			    if(mediaPositive >= mediaNegative){
-			    	
-			    	classeInferida = "positive";
-			    	
-			    }
-			    else{
-			    	
-			    	classeInferida = "negative";
-			    	
-			    }  
+			    //verifica a maior media para inferir a classe
+			    double maiorMedia = -1;
+			    int classeInferidaIndex = -1;
+			    for (int i = 0; i < medias.length; i++) {
+//			    	System.out.println("medias "+i+": " + medias[i]);
+					if(medias[i] > maiorMedia){
+						maiorMedia = medias[i];
+						classeInferidaIndex = i;
+					}
+				}
+			    classeInferida = classValues[classeInferidaIndex];
 				
 			}
 			else if(inferenceType == SistemaFuzzy.INFERENCIA_CLASSICA){
 				
 				/************************** FUZZY CLSSICO *****************************/
 				
-				if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
-					
-					classeInferida = "positive";
-					
-				}
-				else {
-					
-					classeInferida = "negative";
-					
-				}
+//				if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
+//					
+//					classeInferida = "positive";
+//					
+//				}
+//				else {
+//					
+//					classeInferida = "negative";
+//					
+//				}
 				
 				/**********************************************************************/
 				
 			}
 			
-			if(classeInferida.equals("positive")){
-				
-				if(classeReal.equals("positive")){
-					TP++;
-				}
-				else if(classeReal.equals("negative")){
-					FP++;
-				}
-				
+			
+//			if(classeInferida.equals("positive")){
+//				
+//				if(classeReal.equals("positive")){
+//					TP++;
+//				}
+//				else if(classeReal.equals("negative")){
+//					FP++;
+//				}
+//				
+//			}
+//			else if(classeInferida.equals("negative")){
+//				
+//				if(classeReal.equals("negative")){
+//					TN++;
+//				}
+//				else if(classeReal.equals("positive")){
+//					FN++;
+//				}
+//				
+//			}
+			
+			
+//			System.out.println(classeInferida);
+//			System.out.println(classeReal);
+//			System.out.println("-------------------------");
+//			System.exit(0);
+			if(classeInferida.equals(classeReal)){
+				TP++;
 			}
-			else if(classeInferida.equals("negative")){
-				
-				if(classeReal.equals("negative")){
-					TN++;
-				}
-				else if(classeReal.equals("positive")){
-					FN++;
-				}
-				
-			}
+			//PAREI AQUI: a acurácia ta virada no custipiu dando 100%. algo de errado não está certo
 
 		}
 		
 		//System.out.println("	Acertos: " + (TP + TN));
 		//System.out.println("	Erros: " + (FP + FN));
 		
-		double acuracia = (TP + TN)/test.numInstances();
+		double acuracia = (TP + TN)/instancias.numInstances();
 		//System.out.println("Acurácia: " + acuracia);
 		
 		return acuracia;
-		
-	}
-	
-	private String classificaInstancia(Instances instancias, WangMendel wm, int k, String inferenceType){
-		
-		String functionBlockName = "functionBlock";
-		String ruleBlockName = "ruleBlock";
-		
-		FunctionBlock fb = generateFunctionBlock(instancias, wm);
-		fis.addFunctionBlock(functionBlockName, fb);
-		
-		//System.out.println("Número da instância: " + k);
-		Instance instancia = instancias.get(k);
-		
-		//System.out.println("Classe real: " + k);
-		String classeReal = instancias.classAttribute().value((int) instancias.instance(k).classValue());
-		
-		String classeInferida = null;
-		
-		//Seta as entradas
-		//Considerando que o último atributo � sempre o atributo que corresponde a classe da instância, por isso usa-se o -1
-		for (int i = 0; i < (instancias.numAttributes() - 1); i++) {
-			
-			if(instancias.attribute(i).isNumeric()){
-
-				String nomeAtributo = instancias.attribute(i).name();
-				double valor = instancia.value(i);
-				//System.out.println(nomeAtributo + ": " + valor);
-				
-				fis.setVariable(nomeAtributo, valor);
-			}	
-		}
-
-		// Evaluate
-		fis.evaluate();
-		
-		String resultado = "";
-		
-		if(inferenceType == SistemaFuzzy.INFERENCIA_GERAL){
-			
-			/************************** FUZZY GERAL *****************************/
-			int contPositive = 0;
-			double sumPositive = 0;
-			int contNegative = 0;
-			double sumNegative = 0;
-			
-			int contRegrasAtivadas = 0;
-			
-		    for(Rule r : fis.getFunctionBlock(functionBlockName).getFuzzyRuleBlock(ruleBlockName).getRules()){
-		    	
-		    	double grau = r.getDegreeOfSupport();
-		    	String classe = r.getConsequents().getFirst().getTermName();
-		    	
-		    	if(grau > 0){ //Se a regra foi ativada
-		    		
-		    		contRegrasAtivadas++;
-			    	//System.out.println("indice: "+ k +" | grau: " + grau + " | classe: " + classe);
-		    		
-			    	if(classe.equals("positive")){
-			    		
-			    		contPositive++;
-			    		sumPositive += grau;
-			    		
-			    	}
-			    	else if(classe.equals("negative")){
-			    		
-			    		contNegative++;
-			    		sumNegative += grau;
-			    		
-			    	}
-			    	
-		    	}
-		    	
-		    }
-		    
-		    double mediaPositive = sumPositive/contPositive;
-		    double mediaNegative = sumNegative/contNegative;
-		    
-		    //System.out.println("sum negative: " + sumNegative + " | contNegative: " + contNegative);
-		    //System.out.println("Quantidade de regras ativadas: " + contRegrasAtivadas);
-		    //System.out.println("Media positive: " + mediaPositive);
-		    //System.out.println("Media negative: " + mediaNegative);
-		    
-		    if(mediaPositive >= mediaNegative){
-		    	
-		    	classeInferida = "positive";
-		    	
-		    }
-		    else{
-		    	
-		    	classeInferida = "negative";
-		    	
-		    }  
-			
-		}
-		else if(inferenceType == SistemaFuzzy.INFERENCIA_CLASSICA){
-			
-			/************************** FUZZY CLSSICO *****************************/
-			
-			if(fis.getVariable(classAttribute).getValue() >= 0){  // -1 -> negative / 1 -> positive
-				
-				classeInferida = "positive";
-				
-			}
-			else {
-				
-				classeInferida = "negative";
-				
-			}
-			
-			/**********************************************************************/
-			
-		}
-		
-		if(classeInferida.equals("positive")){
-			
-			if(classeReal.equals("positive")){
-				resultado = "TP";
-			}
-			else if(classeReal.equals("negative")){
-				resultado = "FP";
-			}
-			
-		}
-		else if(classeInferida.equals("negative")){
-			
-			if(classeReal.equals("negative")){
-				resultado = "TN";
-			}
-			else if(classeReal.equals("positive")){
-				resultado = "FN";
-			}
-			
-		}
-		
-		return resultado;
 		
 	}
 	
@@ -448,23 +358,30 @@ public class SistemaFuzzy {
 		
 		for (int i = 0; i < instancias.numAttributes(); i++) {
 			
-			String nomeAtributo = instancias.attribute(i).name();
+			Attribute attribute = instancias.attribute(i);
+			String nomeAtributo = attribute.name();
 			
-			if(nomeAtributo.equals(classAttribute)){ //vari�vel de sa�da
+			if(nomeAtributo.equals(classAttribute)){ //variavel de saida
 				
 				Variable output_variable = new Variable(nomeAtributo);
 				
-				Value negative_value = new Value();
-				negative_value.setValReal(-1);
-				MembershipFunctionSingleton especificacoes_termo_negativo = new MembershipFunctionSingleton(negative_value);
-				LinguisticTerm conjuntoFuzzyNegativo = new LinguisticTerm("negative", especificacoes_termo_negativo);
-				output_variable.add(conjuntoFuzzyNegativo);
+				for (int j = 0; j < attribute.numValues(); j++) {				
+					Value value = new Value();
+					//value.setValReal(j);
+					output_variable.add(new LinguisticTerm(attribute.value(j), new MembershipFunctionSingleton(value)));	
+				}
 				
-				Value positive_value = new Value();
-				positive_value.setValReal(1);
-				MembershipFunctionSingleton especificacoes_termo_positivo = new MembershipFunctionSingleton(positive_value);
-				LinguisticTerm conjuntoFuzzyPositivo = new LinguisticTerm("positive", especificacoes_termo_positivo);
-				output_variable.add(conjuntoFuzzyPositivo);
+//				Value negative_value = new Value();
+//				negative_value.setValReal(-1);
+//				MembershipFunctionSingleton especificacoes_termo_negativo = new MembershipFunctionSingleton(negative_value);
+//				LinguisticTerm conjuntoFuzzyNegativo = new LinguisticTerm("negative", especificacoes_termo_negativo);
+//				output_variable.add(conjuntoFuzzyNegativo);
+//				
+//				Value positive_value = new Value();
+//				positive_value.setValReal(1);
+//				MembershipFunctionSingleton especificacoes_termo_positivo = new MembershipFunctionSingleton(positive_value);
+//				LinguisticTerm conjuntoFuzzyPositivo = new LinguisticTerm("positive", especificacoes_termo_positivo);
+//				output_variable.add(conjuntoFuzzyPositivo);
 				
 				//Centre of Gravity for Singletons
 				DefuzzifierCenterOfGravitySingletons defuzzifier = new DefuzzifierCenterOfGravitySingletons(output_variable);
@@ -475,16 +392,16 @@ public class SistemaFuzzy {
 				
 				
 			}
-			else{ //vari�veis de entrada
+			else{ //variaveis de entrada
 				
-				if(instancias.attribute(i).isNumeric()){
+				if(attribute.isNumeric()){
 					
 					AttributeStats as = instancias.attributeStats(i);
 					Stats s = as.numericStats;	
 					
 					/*System.out.println("Atributo: " + instancias.attribute(i).name());
-					System.out.println("Valor m�nimo: " + s.min);
-					System.out.println("Valor m�ximo: " + s.max);*/		
+					System.out.println("Valor minimo: " + s.min);
+					System.out.println("Valor maximo: " + s.max);*/		
 
 					Variable variable = buildVariavel(nomeAtributo, s.min, s.max);
 					variables.put(nomeAtributo, variable);
@@ -512,7 +429,7 @@ public class SistemaFuzzy {
 		double inf = min - range;
 		double sup = min + range;
 	
-		//Defini��o dos limites das regi�es de pertinencia triangular
+		//Definicao dos limites das regioes de pertinencia triangular
 		for(int i = 0; i < quantConjuntosFuzzy; i++){
 			
 			Value ponto_minimo = new Value();
@@ -543,6 +460,36 @@ public class SistemaFuzzy {
 		
 		return variavel_linguistica;
 		
+	}
+	
+	private String[] getClassValues(Instances test){
+		
+		Attribute attribute = test.attribute(test.classIndex());
+		
+		String[] values = new String[attribute.numValues()];
+		
+		for (int j = 0; j < attribute.numValues(); j++) {				
+			values[j] = attribute.value(j);
+		}
+		
+		return values;
+	}
+	
+	
+	private int[] getContadorInt(int size){
+		int[] array = new int[size];
+		for (int i = 0; i < array.length; i++) {
+			array[i] = 0;
+		}
+		return array;
+	}
+	
+	private double[] getContadorDouble(int size){
+		double[] array = new double[size];
+		for (int i = 0; i < array.length; i++) {
+			array[i] = 0;
+		}
+		return array;
 	}
 
 }

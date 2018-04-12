@@ -66,6 +66,45 @@ public class Fitness {
 		
 	}
 	
+	public static double calcAccuracyKnn(Instances instances, Instances trainKnn){
+		
+		int count = 0;
+		int acertos = 0;
+		
+		Classifier ibk = new IBk();	
+		try {
+			ibk.buildClassifier(trainKnn);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//Cada instância é uma posição no cromossomo (indice do cromossomo é o índice da instaância)
+		for (int i = 0; i < instances.numInstances(); i++) {		
+			
+			count++;
+			
+			Instance instancia = instances.get(i);
+			String classeNominalReal = instances.classAttribute().value((int) instances.instance(i).classValue());
+					
+			try {
+				double classe;
+				classe = ibk.classifyInstance(instancia);
+				String classeNominalKnn = instances.classAttribute().value((int) classe);
+	            if (classeNominalReal.equals(classeNominalKnn)) {
+					acertos++;
+	            }
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+		
+		return (double)acertos/(double)count;
+
+	}
+	
 	
 
 }

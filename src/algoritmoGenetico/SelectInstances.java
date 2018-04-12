@@ -22,8 +22,8 @@ public class SelectInstances extends Problem {
         
         try {
         	
-			//test = Fitness.calcAccuracyAndReductionKnn(solution, this.instances, this.trainKnn);
-        	test = Fitness.calcAccuracyAndReductionFuzzy(solution, this.instances, this.trainKnn);
+			test = Fitness.calcAccuracyAndReductionKnn(solution, this.instances, this.trainKnn);
+        	//test = Fitness.calcAccuracyAndReductionFuzzy(solution, this.instances, this.trainKnn);
 			
 	        // test[0] = accuracy (rate)   test[1] = reduction of samples (rate)
 	        solution.setObjective(0, -1 * test[0]);
