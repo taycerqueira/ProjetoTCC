@@ -5,7 +5,6 @@ import jmetal.core.Operator;
 import jmetal.core.Problem;
 import jmetal.core.Solution;
 import jmetal.core.SolutionSet;
-import jmetal.encodings.variable.Binary;
 import jmetal.qualityIndicator.QualityIndicator;
 import jmetal.util.Distance;
 import jmetal.util.JMException;
@@ -67,16 +66,7 @@ public class NSGAII_SelectInstances extends Algorithm {
 
 	    // Create the initial solutionSet
 	    Solution newSolution;
-	    
-	    /* The first chromossome (solution) enable all instances, i.e., all genes
-	    are true! The problem this solution is that always it will be the best solution!
-	    */    
-	    /*newSolution = new Solution(problem_);
-	    initializeWithOne(newSolution);
-	    problem_.evaluate(newSolution);
-	    population.add(newSolution);*/
-	    
-	    
+	    	    
 	    for (int i = 0; i < populationSize; i++) {      
 	        newSolution = new Solution(problem_);
 	        problem_.evaluate(newSolution);      
@@ -85,32 +75,6 @@ public class NSGAII_SelectInstances extends Algorithm {
 	        evaluations++;
 	        population.add(newSolution);              
 	    } 
-	    //generations++;
-	    //System.out.print(evaluations + " " + generations);
-	    
-	    //System.out.println("");
-	    //System.out.println("Printing the population...");  
-	    //printPopulation(population);    
-	    
-	    //System.out.println("Length of parents...............: " + parents.length);
-	    //System.out.println("Number of decision variables....: " + parents[0].getDecisionVariables().length);
-	    //System.out.println("Number of bits p1 and p2........: " + parents[0].getNumberOfBits() + " " + parents[1].getNumberOfBits());
-	    
-	    //Solution[] offSpringCrossover;
-	    //offSpringCrossover = (Solution[]) crossoverOperator.execute(parents);    
-	    //printOffSpring(offSpringCrossover);
-	    //areEquals(parents, offSpringCrossover);
-	    
-	    //System.out.println("");
-	    //System.out.println("Printing the population...");  
-	    //printPopulation(population);
-	    
-	    //Solution[] offSpringMutation = new Solution[2];
-	    //offSpringMutation[0] = new Solution(parents[0]);
-	    //offSpringMutation[1] = new Solution(parents[1]);     
-	    //mutationOperator.execute(offSpringMutation[0]);
-	    //mutationOperator.execute(offSpringMutation[1]);
-	    //areEquals(parents, offSpringMutation);    
 
 	    System.out.println("Executando seleção de instâncias...");
 	    // Generations 
@@ -140,8 +104,6 @@ public class NSGAII_SelectInstances extends Algorithm {
 	                
 	            } // if                            
 	        } // for
-	        
-	        //generations++;
 
 	        // Create the solutionSet union of solutionSet and offSpring
 	        union = ((SolutionSet) population).union(offspringPopulation);
@@ -211,120 +173,4 @@ public class NSGAII_SelectInstances extends Algorithm {
 	    
 	} // execute  
 	    
-	/**
-	 * printOffSpring print the offspring
-	 * @param offSpring is one vector Solution with 2 offspring
-	*/ 
-	private void printOffSpring(Solution[] offSpring) {    
-	    
-	    if (problem_.getSolutionType().getClass() == ArrayBinarySolutionType.class) {        
-	    
-	        Binary off1 = (Binary)offSpring[0].getDecisionVariables()[0];
-	        Binary off2 = (Binary)offSpring[1].getDecisionVariables()[0];        
-
-	        int size1 = offSpring[0].getNumberOfBits();
-	        int size2 = offSpring[1].getNumberOfBits();
-
-	        if (size1 != size2)
-	            System.err.println("The number of bits of offspring are not equals!!!");        
-	        else {
-	            System.out.println("Printing offspring 1:");
-	            for (int k = 0; k < size1; k++)
-	                System.out.println(off1.getIth(k));
-
-	            System.out.println(" ");
-
-	            System.out.println("Printing offspring 2:");
-	            for (int k = 0; k < size1; k++)
-	                System.out.println(off2.getIth(k));
-	        }
-	    }
-	    else {
-	        System.out.println("NSGAII_SelectInstances class > printOffSpring method error: solution type " + 
-	            problem_.getSolutionType().getClass() + " invalid");
-	        System.exit(-1);        
-	    }
-	}    
-	/**
-	* Prints the population, which is one object from SolutionSet
-	* @param pop
-	* @throws jmetal.util.JMException 
-	* @author Matheus Giovanni Pires              
-	* @email  mgpires@ecomp.uefs.br
-	* @data   2014/09/17    
-	*/
-	private void printPopulation(SolutionSet pop) throws JMException {       
-
-	    if (problem_.getSolutionType().getClass() == ArrayBinarySolutionType.class) {            
-	        int sizeOfPopulation = pop.getMaxSize(); 
-	        int size;
-	        for (int i = 0; i < sizeOfPopulation; i++) {   
-	            System.out.println("Chromosome " + i);            
-	            Binary bits = (Binary)pop.get(i).getDecisionVariables()[0];
-	            size = bits.getNumberOfBits();                
-	            for (int k = 0; k < size; k++)
-	                System.out.println(bits.getIth(k));
-	        }
-	    }
-	    else {
-	        System.out.println("NSGAII_SelectInstances class > printPopulation method error: solution type " + 
-	            problem_.getSolutionType().getClass() + " invalid");
-	        System.exit(-1);
-	    }
-	} // end printPopulation
-
-	/**
-	 * This method compares all bits between parents and offspring, if one is not
-	 * equal, one message will be printed 
-	 * @param parents vector Solution with two parents
-	 * @param offSpring vector Solution with two offsprings
-	 */
-	private void areEquals(Solution[] parents, Solution[] offSpring) {
-
-	    Binary off1 = (Binary)offSpring[0].getDecisionVariables()[0];
-	    Binary off2 = (Binary)offSpring[1].getDecisionVariables()[0];
-
-	    Binary p1 = (Binary)parents[0].getDecisionVariables()[0];
-	    Binary p2 = (Binary)parents[1].getDecisionVariables()[0];        
-
-	    boolean flag = false;
-
-	    if (offSpring[0].getNumberOfBits() != parents[0].getNumberOfBits() ||
-	        offSpring[1].getNumberOfBits() != parents[1].getNumberOfBits()) {
-	        System.err.println("Number of bits is incompatible");
-	    }        
-	    else {
-	        int size = offSpring[0].getNumberOfBits();            
-
-	        for (int k = 0; k < size; k++) {           
-
-	            if (p1.getIth(k) != off1.getIth(k)) { 
-	                System.out.println("Offspring 1 and father 1: bit " + k + " is diferent");
-	                flag = true;
-	            }
-
-	            if (p2.getIth(k) != off2.getIth(k)) {
-	                System.out.println("Offspring 2 and father 2: bit " + k + " is diferent");
-	                flag = true;
-	            }
-
-	        } 
-	    }
-	    if (flag == false)
-	        System.out.println("\nParents and offsprings are equals!");
-	} // end areEquals method
-
-	/**
-	 * This method initialize the <solution> with true. It means that all instances
-	 * are selected
-	 * @param solution 
-	 */
-	private void initializeWithOne(Solution solution) {
-	    Binary sol = (Binary)solution.getDecisionVariables()[0];
-	    int bits = sol.getNumberOfBits();  
-
-	    for (int i = 0; i < bits; i++)
-	        sol.setIth(i, true);        
-	}
-
 }

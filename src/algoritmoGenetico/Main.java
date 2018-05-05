@@ -20,11 +20,17 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 		
-//		String databaseName = "basefilmes_53atributos.arff";
+//		String databaseName = "basefilmes_53atributos.arff"; //2000 instâncias
 //		String classAttribute = "polarity";
+//		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
+//		double probabilityMutationSelectInstances  = 0.3; //~1%
+//		int populationSizeSelectInstances          = 200; //~10%
 		
-		String databaseName = "weka-database/iris.arff";
+		String databaseName = "weka-database/diabetes.arff"; //150 instâncias
 		String classAttribute = "class";
+		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
+		double probabilityMutationSelectInstances  = 0.3; //~1%
+		int populationSizeSelectInstances          = 16; //~10%
 		
 		DataSource source = new DataSource (databaseName);
 		Instances data = source.getDataSet();
@@ -32,11 +38,8 @@ public class Main {
 		data.setClass(data.attribute(classAttribute));
 		
 		/* Parâmetros para o AG */
-		//int populationSizeSelectInstances          = 10;
-		int populationSizeSelectInstances          = 200;
+		//int populationSizeSelectInstances          = 200;
         int maxEvaluationsSelectInstances          = 1000;        
-        double probabilityCrossoverSelectInstances = 0.4;
-        double probabilityMutationSelectInstances  = 0.4;
 
 		int seed = 1;          // the seed for randomizing the data
 		int folds = 10;         // the number of folds to generate, >=2
