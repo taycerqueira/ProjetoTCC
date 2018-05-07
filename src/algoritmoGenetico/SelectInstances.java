@@ -8,12 +8,14 @@ import jmetal.core.Solution;
 import jmetal.core.SolutionSet;
 import jmetal.core.SolutionType;
 import jmetal.util.JMException;
+import utils.KnnUtils;
+import utils.WekaUtils;
 import weka.core.Instances;
 
 public class SelectInstances extends Problem {
 	
     private Instances instances;
-    private Instances trainKnn;
+    private Instances trainFitnessAlgorithm;
 
     @Override
     public void evaluate(Solution solution) throws JMException {   
@@ -22,7 +24,10 @@ public class SelectInstances extends Problem {
         
         try {
         	
-			test = Fitness.calcAccuracyAndReductionKnn(solution, this.instances, this.trainKnn);
+        	Instances selectedInstances = WekaUtils.getSelectedInstances(instances, solution);
+        	test = KnnUtils.calcularAcuraciaReducao(trainFitnessAlgorithm, selectedInstances, instances.size());
+        	
+//			test = Fitness.calcAccuracyAndReductionKnn(solution, this.instances, this.trainFitnessAlgorithm);
         	//test = Fitness.calcAccuracyAndReductionFuzzy(solution, this.instances, this.trainKnn);
 			
 	        // test[0] = accuracy (rate)   test[1] = reduction of samples (rate)
@@ -41,12 +46,12 @@ public class SelectInstances extends Problem {
 
     public SelectInstances(SolutionType solutionType) {
         super(solutionType);
-    }
+    } 
 
-    public SelectInstances(Instances trainAg, Instances trainKnn) {
+    public SelectInstances(Instances trainAg, Instances trainFitnessAlgorithm) {
     		
 		this.instances = trainAg;
-		this.trainKnn = trainKnn;
+		this.trainFitnessAlgorithm = trainFitnessAlgorithm;
     	
         problemName_= "Seleção de Instâncias";
         // In my cases, there will not have constraints

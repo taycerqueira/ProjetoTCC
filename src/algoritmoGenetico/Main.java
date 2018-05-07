@@ -12,7 +12,9 @@ import jmetal.core.SolutionSet;
 import jmetal.operators.crossover.CrossoverFactory;
 import jmetal.operators.mutation.MutationFactory;
 import jmetal.operators.selection.SelectionFactory;
-import sistemaFuzzy.SistemaFuzzy;
+import utils.FuzzyUtils;
+import utils.KnnUtils;
+import utils.WekaUtils;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
 
@@ -20,17 +22,17 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 		
-//		String databaseName = "basefilmes_53atributos.arff"; //2000 instâncias
-//		String classAttribute = "polarity";
-//		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
-//		double probabilityMutationSelectInstances  = 0.3; //~1%
-//		int populationSizeSelectInstances          = 200; //~10%
-		
-		String databaseName = "weka-database/diabetes.arff"; //150 instâncias
-		String classAttribute = "class";
+		String databaseName = "basefilmes_53atributos.arff"; //2000 instâncias
+		String classAttribute = "polarity";
 		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
 		double probabilityMutationSelectInstances  = 0.3; //~1%
-		int populationSizeSelectInstances          = 16; //~10%
+		int populationSizeSelectInstances          = 200; //~10%
+		
+//		String databaseName = "weka-database/iris.arff"; //150 instâncias
+//		String classAttribute = "class";
+//		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
+//		double probabilityMutationSelectInstances  = 0.3; //~1%
+//		int populationSizeSelectInstances          = 16; //~10%
 		
 		DataSource source = new DataSource (databaseName);
 		Instances data = source.getDataSet();
@@ -38,7 +40,6 @@ public class Main {
 		data.setClass(data.attribute(classAttribute));
 		
 		/* Parâmetros para o AG */
-		//int populationSizeSelectInstances          = 200;
         int maxEvaluationsSelectInstances          = 1000;        
 
 		int seed = 1;          // the seed for randomizing the data
@@ -53,7 +54,6 @@ public class Main {
 		double[] acuraciasSemOtimizacao = new double[folds];
 		double[] acuraciasComOtimizacao = new double[folds];
 		
-		SistemaFuzzy fuzzy = new SistemaFuzzy(SistemaFuzzy.INFERENCIA_GERAL, classAttribute);
 		System.out.println("Base de dados: " + databaseName + "\n");
 
 		for (int n = 0; n < folds; n++) {
@@ -72,51 +72,57 @@ public class Main {
 			
 			Instances trainAg = randData2.trainCV(folds2, 0);
 			Instances trainKnn = randData2.testCV(folds2, 0);
-			
+					
 			System.out.println("Tamanho da base de treinamento do AG: " + trainAg.size());
-			System.out.println("Tamanho da base de treinamento do KNN: " + trainKnn.size());
-			System.out.println("Tamanho da base de teste do Fuzzy: " + test.size());
+			System.out.println("Tamanho da base de treinamento para função fitness: " + trainKnn.size());
+			System.out.println("Tamanho da base de teste: " + test.size());
 			
 			//Executar fuzzy com a base completa e pegar a acurácia
 			
-			System.out.println("Executando sistema fuzzy com a base de dados completa...");
-			double acuracia1 = fuzzy.calcAccuracy(trainAg, test);
+			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
+			
+			System.out.println("\nFUZZY: Executando com a base de dados completa...");
+			double acuracia1 = FuzzyUtils.calcularAcuracia(trainAg, test);
 			System.out.println("	Acurácia: " + acuracia1);
 			acuraciasSemOtimizacao[n] = acuracia1;
 			
-			System.out.println("Executando KNN com a base de dados completa...");
-			double acuraciaKnn = Fitness.calcAccuracyKnn(trainAg, trainKnn);
-			System.out.println("	Acurácia KNN: " + acuraciaKnn);
+			System.out.println("\nKNN: Executando com a base de dados completa...");
+			double acuraciaKnn = KnnUtils.calcularAcuracia(trainAg, test);
+			System.out.println("	Acurácia KNN com a base completa: " + acuraciaKnn);
+			
+			//----------------------- OTIMIZANDO A BASE DE DADOS COM O AG ----------------------------
 			
 			//Executrar o AG e obter uma base otimizada
-			//System.out.println("\nExecutando algoritmo genético...");            
+			System.out.println("\nAG: Executando algoritmo genético...");            
 			Solution solution = executaAG(trainAg, trainKnn, populationSizeSelectInstances, maxEvaluationsSelectInstances,
 				      probabilityCrossoverSelectInstances, probabilityMutationSelectInstances);
 			
-			//Executar fuzzy novamente com a base otimizada
+			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
 			
-			//System.out.println("solution crowding distance: " + solution.getCrowdingDistance());
-
-			System.out.println("\nExecutando sistema fuzzy com a base de dados otimizada...");
-			double[] resultado = fuzzy.calcAccuracyAndReductionSolution(trainAg, test, solution);
-			System.out.println("	Acurácia: " + resultado[0]);
-			//System.out.println("	Redução: " + resultado[1]);
+			Instances selectedInstances = WekaUtils.getSelectedInstances(trainAg, solution);
+			System.out.println("\nFUZZY: Executando com a base de dados otimizada...");
+			double[] resultado = FuzzyUtils.calcularAcuraciaReducao(selectedInstances, test, trainAg.size());
+			System.out.println("	Acurácia Fuzzy: " + resultado[0]);
+			System.out.println("	Redução: " + resultado[1]);
 			acuraciasComOtimizacao[n] = resultado[0];
 			
+			System.out.println("\nKNN: Executando com a base de dados otimizada...");
+			double resultadoKnn = FuzzyUtils.calcularAcuracia(selectedInstances, test);
+			System.out.println("	Acurácia KNN com a base otimizada: " + resultadoKnn);
+			
+			//-----------------------------------------------------------------------------------------
+			
 			System.out.println("\n");
-			//System.exit(0);
+			System.exit(0);
 
 		}
 
 		System.out.println("=> RESULTADOS:");
+		
 		System.out.println("* Fuzzy com base completa: acuracia media = " + calculaMedia(acuraciasSemOtimizacao) + " | desvio padrao: " + calculaDesvioPadrao(acuraciasSemOtimizacao));
-//		System.out.println("=> Acurácia média SEM otimização: " + calculaMedia(acuraciasSemOtimizacao));
-//		System.out.println("=> Desvio padrão SEM otimização: " + calculaDesvioPadrao(acuraciasSemOtimizacao));
 		
 		System.out.println("* Fuzzy com base otimizada: acuracia media = " + calculaMedia(acuraciasComOtimizacao) + " | desvio padrao: " + calculaDesvioPadrao(acuraciasComOtimizacao));
-//		System.out.println("=> Acurácia média COM otimização: " +calculaMedia(acuraciasComOtimizacao));
-//		System.out.println("=> Desvio padrão COM otimização: " + calculaDesvioPadrao(acuraciasComOtimizacao));	
-
+	
 	}
 	
 	private static double calculaDesvioPadrao(double[] valores){

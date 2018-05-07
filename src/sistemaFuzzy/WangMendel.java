@@ -17,73 +17,33 @@ import net.sourceforge.jFuzzyLogic.rule.Variable;
 import net.sourceforge.jFuzzyLogic.ruleAccumulationMethod.RuleAccumulationMethodMax;
 import net.sourceforge.jFuzzyLogic.ruleActivationMethod.RuleActivationMethodMin;
 import net.sourceforge.jFuzzyLogic.ruleConnectionMethod.RuleConnectionMethodAndMin;
+import utils.WekaUtils;
 import weka.core.Instance;
 import weka.core.Instances;
 
 public class WangMendel {
 	
 	private Instances instancias;
-	private String classAttribute;
-	private Solution solution;
-	private boolean useSolution;
 	
-	//Quantidade de instâncias utilizadas para geração das regras
-	private int quantInstancias;
-	
-	public WangMendel(Instances instancias, String classAttribute) throws Exception{
-		
+	public WangMendel(Instances instancias) throws Exception{
 		this.instancias = instancias;
-		this.classAttribute = classAttribute;
-		this.solution = null;
-
 	}
-
-	public WangMendel(Instances instancias, String classAttribute, Solution solution) throws Exception{
 		
-		this.instancias = instancias;
-		this.classAttribute = classAttribute;
-		this.solution = solution;
-
-	}
-	
-	private void setQuantInstancias(int quant){
-		this.quantInstancias = quant;
-	}
-	
-	//A quantidade de instancias só estará disponível após a execução do método "generateRuleBlock"
-	public int getQuantInstancias(){
-		return this.quantInstancias;
-	}
-	
 	public RuleBlock generateRuleBlock(String name, FunctionBlock functionBlock, HashMap<String, Variable> variaveis) throws Exception{
 		
+		String classAttribute = WekaUtils.getClassAttributeName(instancias);
 		RuleBlock ruleBlock = new RuleBlock(functionBlock);
 		ruleBlock.setName(name);
 		ruleBlock.setRuleActivationMethod(new RuleActivationMethodMin());
 		ruleBlock.setRuleAccumulationMethod(new RuleAccumulationMethodMax());
-		
-		//Armazena o indice do atributo que corresponde a classe. Aqui considero que � sempre o �ltimo atributo.
-		int indiceClasse = this.instancias.numAttributes() - 1; 
-		
-		int contInstancias = 0; 
-		
-		for (int k = 0; k < instancias.size(); k++ ) {
 			
-			//Caso o objeto possua uma solution, verifica se a instância faz parte da solução
-			if(this.solution != null){
-				Binary sol = (Binary) this.solution.getDecisionVariables()[0];
-				if (sol.getIth(k) == false) {
-					continue;
-				}
-			}
-				
-			contInstancias++;
+		for (int k = 0; k < instancias.size(); k++ ) {
 			
 			Instance instancia = instancias.get(k);
 
-			Rule regra = new Rule("Rule " + contInstancias, ruleBlock);
+			Rule regra = new Rule("Rule " + k, ruleBlock);
 			
-			String classeInstancia = instancia.stringValue(indiceClasse);
+			String classeInstancia = WekaUtils.getInstanceClass(instancia);
 			Variable output_variable = variaveis.get(classAttribute);
 			
 			regra.addConsequent(output_variable, classeInstancia, false);
@@ -96,50 +56,54 @@ public class WangMendel {
 			ArrayList<LinguisticTerm> antecedentesConjuntosFuzzy = new ArrayList<LinguisticTerm>();
 			
 			//Pega cada atributo da instância
-			for (int i = 0; i < indiceClasse; i++) {
+			for (int i = 0; i < instancias.numAttributes(); i++) {
 				
-				//Para cada atributo da instância, verifico o conjunto fuzzy de maior grau
-				double maiorGrau = Double.NEGATIVE_INFINITY;
-				LinguisticTerm conjuntoMaiorGrau = null;	
-							
-				String atributeName = instancia.attribute(i).name();					
-				
-				double valor = instancia.value(i);
-				Variable variavel = variaveis.get(atributeName);
-				
-				List<LinguisticTerm> conjuntosFuzzy = variavel.linguisticTermsSorted();
-				for (LinguisticTerm conjunto : conjuntosFuzzy) {
-
-					MembershipFunction pertinencia = conjunto.getMembershipFunction();
-					double grau = pertinencia.membership(valor);
+				if(i != instancias.classIndex()){
 					
-					if(grau > maiorGrau){
-						maiorGrau = grau;
-						conjuntoMaiorGrau = conjunto;
+					//Para cada atributo da instância, verifico o conjunto fuzzy de maior grau
+					double maiorGrau = Double.NEGATIVE_INFINITY;
+					LinguisticTerm conjuntoMaiorGrau = null;	
+								
+					String atributeName = instancia.attribute(i).name();					
+					
+					double valor = instancia.value(i);
+					Variable variavel = variaveis.get(atributeName);
+					
+					List<LinguisticTerm> conjuntosFuzzy = variavel.linguisticTermsSorted();
+					for (LinguisticTerm conjunto : conjuntosFuzzy) {
+
+						MembershipFunction pertinencia = conjunto.getMembershipFunction();
+						double grau = pertinencia.membership(valor);
+						
+						if(grau > maiorGrau){
+							maiorGrau = grau;
+							conjuntoMaiorGrau = conjunto;
+						}
+						
 					}
 					
-				}
-				
-				antecedentesConjuntosFuzzy.add(conjuntoMaiorGrau);
-				
-				grauRegra *= maiorGrau;
-				
-				if(i == 0){
+					antecedentesConjuntosFuzzy.add(conjuntoMaiorGrau);
 					
-					fuzzyRuleTerm1 = new RuleTerm(variavel, conjuntoMaiorGrau.getTermName(), false);
+					grauRegra *= maiorGrau;
 					
-				}
-				else if(i == 1){
+					if(i == 0){
 						
-					RuleTerm fuzzyRuleTerm2 = new RuleTerm(variavel, conjuntoMaiorGrau.getTermName(), false);
-					antecedents = new RuleExpression(fuzzyRuleTerm1, fuzzyRuleTerm2, RuleConnectionMethodAndMin.get());
-					
-				}
-				else{
-					//System.out.println(antecedents);
-					
-					RuleTerm nextFuzzyRuleTerm = new RuleTerm(variavel, conjuntoMaiorGrau.getTermName(), false);
-					antecedents = new RuleExpression(antecedents, nextFuzzyRuleTerm, RuleConnectionMethodAndMin.get());
+						fuzzyRuleTerm1 = new RuleTerm(variavel, conjuntoMaiorGrau.getTermName(), false);
+						
+					}
+					else if(i == 1){
+							
+						RuleTerm fuzzyRuleTerm2 = new RuleTerm(variavel, conjuntoMaiorGrau.getTermName(), false);
+						antecedents = new RuleExpression(fuzzyRuleTerm1, fuzzyRuleTerm2, RuleConnectionMethodAndMin.get());
+						
+					}
+					else{
+						//System.out.println(antecedents);
+						
+						RuleTerm nextFuzzyRuleTerm = new RuleTerm(variavel, conjuntoMaiorGrau.getTermName(), false);
+						antecedents = new RuleExpression(antecedents, nextFuzzyRuleTerm, RuleConnectionMethodAndMin.get());
+						
+					}
 					
 				}
 				
@@ -197,9 +161,8 @@ public class WangMendel {
 						
 		}
 		
-		System.out.println("	Quantidade de instâncias: " + contInstancias);
-		System.out.println("	Quantidade de regras geradas: " + ruleBlock.getRules().size());
-		setQuantInstancias(contInstancias);		
+		System.out.println("	Quantidade de instâncias: " + instancias.size());
+		System.out.println("	Quantidade de regras geradas: " + ruleBlock.getRules().size());		
 		return ruleBlock;
 		
 	}
