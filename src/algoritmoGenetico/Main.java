@@ -12,41 +12,26 @@ import jmetal.core.SolutionSet;
 import jmetal.operators.crossover.CrossoverFactory;
 import jmetal.operators.mutation.MutationFactory;
 import jmetal.operators.selection.SelectionFactory;
+import utils.Configuracoes;
 import utils.FuzzyUtils;
 import utils.KnnUtils;
 import utils.WekaUtils;
 import weka.core.Instances;
-import weka.core.converters.ConverterUtils.DataSource;
 
 public class Main {
 
 	public static void main(String[] args) throws Exception {
+				
+		Configuracoes config = new Configuracoes("basefilmes_53atributos.arff", "polarity", 0.5, 0.3, 200, 1000);
+		//Configuracoes config = new Configuracoes("weka-database/iris.arff", "class", 0.5, 0.3, 16, 1000);
 		
-		String databaseName = "basefilmes_53atributos.arff"; //2000 instâncias
-		String classAttribute = "polarity";
-		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
-		double probabilityMutationSelectInstances  = 0.3; //~1%
-		int populationSizeSelectInstances          = 200; //~10%
-		
-//		String databaseName = "weka-database/iris.arff"; //150 instâncias
-//		String classAttribute = "class";
-//		double probabilityCrossoverSelectInstances = 0.5; //60% - 90%
-//		double probabilityMutationSelectInstances  = 0.3; //~1%
-//		int populationSizeSelectInstances          = 16; //~10%
-		
-		DataSource source = new DataSource (databaseName);
-		Instances data = source.getDataSet();
-		
-		data.setClass(data.attribute(classAttribute));
-		
-		/* Parâmetros para o AG */
-        int maxEvaluationsSelectInstances          = 1000;        
+		Instances instances = config.getInstances();      
 
 		int seed = 1;          // the seed for randomizing the data
 		int folds = 10;         // the number of folds to generate, >=2
 
 		Random rand = new Random(seed);   // create seeded number generator
-		Instances randData = new Instances(data);   // create copy of original data
+		Instances randData = new Instances(instances);   // create copy of original data
 		randData.randomize(rand);         // randomize data with number generator
 
 		randData.stratify(folds);
@@ -54,7 +39,7 @@ public class Main {
 		double[] acuraciasSemOtimizacao = new double[folds];
 		double[] acuraciasComOtimizacao = new double[folds];
 		
-		System.out.println("Base de dados: " + databaseName + "\n");
+		System.out.println("Base de dados: " + config.getDatabase() + "\n");
 
 		for (int n = 0; n < folds; n++) {
 			
@@ -73,7 +58,7 @@ public class Main {
 			Instances trainAg = randData2.trainCV(folds2, 0);
 			Instances trainKnn = randData2.testCV(folds2, 0);
 					
-			System.out.println("Tamanho da base de treinamento do AG: " + trainAg.size());
+			System.out.println("Tamanho da base de treinamento do AGMO: " + trainAg.size());
 			System.out.println("Tamanho da base de treinamento para função fitness: " + trainKnn.size());
 			System.out.println("Tamanho da base de teste: " + test.size());
 			
@@ -94,8 +79,7 @@ public class Main {
 			
 			//Executrar o AG e obter uma base otimizada
 			System.out.println("\nAG: Executando algoritmo genético...");            
-			Solution solution = executaAG(trainAg, trainKnn, populationSizeSelectInstances, maxEvaluationsSelectInstances,
-				      probabilityCrossoverSelectInstances, probabilityMutationSelectInstances);
+			Solution solution = executaAG(trainAg, trainKnn, config);
 			
 			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
 			
@@ -107,13 +91,13 @@ public class Main {
 			acuraciasComOtimizacao[n] = resultado[0];
 			
 			System.out.println("\nKNN: Executando com a base de dados otimizada...");
-			double resultadoKnn = FuzzyUtils.calcularAcuracia(selectedInstances, test);
+			double resultadoKnn = KnnUtils.calcularAcuracia(selectedInstances, test);
 			System.out.println("	Acurácia KNN com a base otimizada: " + resultadoKnn);
 			
 			//-----------------------------------------------------------------------------------------
 			
 			System.out.println("\n");
-			System.exit(0);
+			//System.exit(0);
 
 		}
 
@@ -155,8 +139,7 @@ public class Main {
 	}
 	
 	
-	private static Solution executaAG(Instances trainAg, Instances trainKnn,  int populationSizeSelectInstances, int maxEvaluationsSelectInstances,
-		       double probabilityCrossoverSelectInstances, double probabilityMutationSelectInstances) throws Exception{
+	private static Solution executaAG(Instances trainAg, Instances trainKnn, Configuracoes config) throws Exception{
 		
 		long inicio = System.currentTimeMillis(); 
 		
@@ -169,19 +152,21 @@ public class Main {
          
         
         Algorithm algorithm = new NSGAII_SelectInstances(problem);
-        algorithm.setInputParameter("populationSize", populationSizeSelectInstances);
-        algorithm.setInputParameter("maxEvaluations", maxEvaluationsSelectInstances);        
+        algorithm.setInputParameter("populationSize", config.getPopulationSize());
+        algorithm.setInputParameter("maxEvaluations", config.getMaxEvaluations());        
 
         /*System.out.println("Population size.................: " + algorithm.getInputParameter("populationSize").toString());
         System.out.println ("Max evaluations.................: " + algorithm.getInputParameter("maxEvaluations").toString());*/
          
         HashMap<String, Double> parameters = new HashMap<String, Double>();
-        parameters.put("probability", probabilityCrossoverSelectInstances);
+        parameters.put("probability", config.getProbabilityCrossover());
         
         Operator crossover = CrossoverFactory.getCrossoverOperator("HUXCrossover", parameters);
 
         parameters = new HashMap<String, Double>();
-        parameters.put("probability", probabilityMutationSelectInstances);
+        double probabilityMutation = 1.0/problem.getNumberOfVariables();
+        //parameters.put("probability", config.getProbabilityMutation());
+        parameters.put("probability", probabilityMutation);
         Operator mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
 
         parameters = null;
