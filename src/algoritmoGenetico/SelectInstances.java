@@ -8,7 +8,8 @@ import jmetal.core.Solution;
 import jmetal.core.SolutionSet;
 import jmetal.core.SolutionType;
 import jmetal.util.JMException;
-import utils.KnnUtils;
+import utils.Resultado;
+import utils.Utils;
 import utils.WekaUtils;
 import weka.core.Instances;
 
@@ -20,19 +21,24 @@ public class SelectInstances extends Problem {
     @Override
     public void evaluate(Solution solution) throws JMException {   
         
-        double[] test;       
+//        double[] test;       
         
         try {
         	
         	Instances selectedInstances = WekaUtils.getSelectedInstances(instances, solution);
-        	test = KnnUtils.calcularAcuraciaReducao(trainFitnessAlgorithm, selectedInstances, instances.size());
+//        	test = KnnUtils.calcularAcuraciaReducao(trainFitnessAlgorithm, selectedInstances, instances.size());
+//        	
+//	        solution.setObjective(0, -1 * test[0]);
+//	        solution.setObjective(1, -1 * test[1]);
         	
-//			test = Fitness.calcAccuracyAndReductionKnn(solution, this.instances, this.trainFitnessAlgorithm);
-        	//test = Fitness.calcAccuracyAndReductionFuzzy(solution, this.instances, this.trainKnn);
-			
-	        // test[0] = accuracy (rate)   test[1] = reduction of samples (rate)
-	        solution.setObjective(0, -1 * test[0]);
-	        solution.setObjective(1, -1 * test[1]);
+        	Resultado res = Utils.gerarResultadoKnn(trainFitnessAlgorithm, selectedInstances);
+        	res.setQtdInstanciasAntes(instances.size());
+        	
+        	System.out.println("acuracia: " + res.calcularAcuracia());
+        	System.out.println("redução: " + res.calcularReducao());
+        	
+	        solution.setObjective(0, -1 * res.calcularAcuracia());
+	        solution.setObjective(1, -1 * res.calcularReducao());
 	        
 		} catch (Exception e) {
 			

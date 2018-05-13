@@ -1,7 +1,5 @@
 package algoritmoGenetico;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Random;
 import jmetal.core.Algorithm;
@@ -13,8 +11,8 @@ import jmetal.operators.crossover.CrossoverFactory;
 import jmetal.operators.mutation.MutationFactory;
 import jmetal.operators.selection.SelectionFactory;
 import utils.Configuracoes;
-import utils.FuzzyUtils;
-import utils.KnnUtils;
+import utils.Resultado;
+import utils.Utils;
 import utils.WekaUtils;
 import weka.core.Instances;
 
@@ -22,8 +20,8 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 				
-		Configuracoes config = new Configuracoes("basefilmes_53atributos.arff", "polarity", 0.5, 0.3, 200, 1000);
-		//Configuracoes config = new Configuracoes("weka-database/iris.arff", "class", 0.5, 0.3, 16, 1000);
+//		Configuracoes config = new Configuracoes("basefilmes_53atributos.arff", "polarity", 0.5, 0.3, 200, 1000);
+		Configuracoes config = new Configuracoes("weka-database/iris.arff", "class", 0.5, 0.3, 16, 1000);
 		
 		Instances instances = config.getInstances();      
 
@@ -36,8 +34,14 @@ public class Main {
 
 		randData.stratify(folds);
 		
-		double[] acuraciasSemOtimizacao = new double[folds];
-		double[] acuraciasComOtimizacao = new double[folds];
+//		double[] acuraciasSemOtimizacao = new double[folds];
+//		double[] acuraciasComOtimizacao = new double[folds];
+		
+		Resultado[] resultadosFuzzySemOtimizacao = new Resultado[folds];
+		Resultado[] resultadosFuzzyComOtimizacao = new Resultado[folds];
+		
+		Resultado[] resultadosKnnSemOtimizacao = new Resultado[folds];
+		Resultado[] resultadosKnnComOtimizacao = new Resultado[folds];
 		
 		System.out.println("Base de dados: " + config.getDatabase() + "\n");
 
@@ -58,41 +62,36 @@ public class Main {
 			Instances trainAg = randData2.trainCV(folds2, 0);
 			Instances trainKnn = randData2.testCV(folds2, 0);
 					
-			System.out.println("Tamanho da base de treinamento do AGMO: " + trainAg.size());
-			System.out.println("Tamanho da base de treinamento para função fitness: " + trainKnn.size());
-			System.out.println("Tamanho da base de teste: " + test.size());
+//			System.out.println("Tamanho da base de treinamento do AGMO: " + trainAg.size());
+//			System.out.println("Tamanho da base de treinamento para função fitness: " + trainKnn.size());
+//			System.out.println("Tamanho da base de teste: " + test.size());
 			
 			//Executar fuzzy com a base completa e pegar a acurácia
 			
 			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
 			
 			System.out.println("\nFUZZY: Executando com a base de dados completa...");
-			double acuracia1 = FuzzyUtils.calcularAcuracia(trainAg, test);
-			System.out.println("	Acurácia: " + acuracia1);
-			acuraciasSemOtimizacao[n] = acuracia1;
+			resultadosFuzzySemOtimizacao[n] = Utils.gerarResultadoFuzzy(trainAg, test);
 			
 			System.out.println("\nKNN: Executando com a base de dados completa...");
-			double acuraciaKnn = KnnUtils.calcularAcuracia(trainAg, test);
-			System.out.println("	Acurácia KNN com a base completa: " + acuraciaKnn);
+			resultadosKnnSemOtimizacao[n] = Utils.gerarResultadoKnn(trainAg, test);
 			
 			//----------------------- OTIMIZANDO A BASE DE DADOS COM O AG ----------------------------
 			
 			//Executrar o AG e obter uma base otimizada
-			System.out.println("\nAG: Executando algoritmo genético...");            
+//			System.out.println("\nAG: Executando algoritmo genético...");            
 			Solution solution = executaAG(trainAg, trainKnn, config);
 			
 			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
 			
 			Instances selectedInstances = WekaUtils.getSelectedInstances(trainAg, solution);
 			System.out.println("\nFUZZY: Executando com a base de dados otimizada...");
-			double[] resultado = FuzzyUtils.calcularAcuraciaReducao(selectedInstances, test, trainAg.size());
-			System.out.println("	Acurácia Fuzzy: " + resultado[0]);
-			System.out.println("	Redução: " + resultado[1]);
-			acuraciasComOtimizacao[n] = resultado[0];
+			resultadosFuzzyComOtimizacao[n] = Utils.gerarResultadoFuzzy(selectedInstances, test);
+			resultadosFuzzyComOtimizacao[n].setQtdInstanciasAntes(trainAg.size());
 			
 			System.out.println("\nKNN: Executando com a base de dados otimizada...");
-			double resultadoKnn = KnnUtils.calcularAcuracia(selectedInstances, test);
-			System.out.println("	Acurácia KNN com a base otimizada: " + resultadoKnn);
+			resultadosFuzzyComOtimizacao[n] = Utils.gerarResultadoKnn(selectedInstances, test);
+			resultadosFuzzyComOtimizacao[n].setQtdInstanciasAntes(trainAg.size());
 			
 			//-----------------------------------------------------------------------------------------
 			
@@ -102,42 +101,41 @@ public class Main {
 		}
 
 		System.out.println("=> RESULTADOS:");
-		
-		System.out.println("* Fuzzy com base completa: acuracia media = " + calculaMedia(acuraciasSemOtimizacao) + " | desvio padrao: " + calculaDesvioPadrao(acuraciasSemOtimizacao));
-		
-		System.out.println("* Fuzzy com base otimizada: acuracia media = " + calculaMedia(acuraciasComOtimizacao) + " | desvio padrao: " + calculaDesvioPadrao(acuraciasComOtimizacao));
+		printResultados(resultadosFuzzySemOtimizacao, "Fuzzy sem otimização");
+		printResultados(resultadosFuzzyComOtimizacao, "Fuzzy com otimização");
+		printResultados(resultadosKnnSemOtimizacao, "KNN sem otimização");
+		printResultados(resultadosKnnComOtimizacao, "KNN com otimização");
 	
 	}
 	
-	private static double calculaDesvioPadrao(double[] valores){
+	public static void printResultados(Resultado[] resultados, String label){
 		
-		double media = 0;
+		System.out.println("\n-------------------------------------------------------------------------");
 		
-		media = calculaMedia(valores);
+		System.out.println(label);
 		
-		double aux1 = 0;
-		for (int i = 0; i < valores.length; i++) {
-	        double aux2 = valores[i] - media;
-	        aux1 += aux2 * aux2;
-			
+		double[] acuracias = new double[resultados.length];
+		long[] duracoes = new long[resultados.length];
+		double[] reducoes = new double[resultados.length];
+		double[] qtdInstancias = new double[resultados.length];
+		double[] regrasGeradas = new double[resultados.length];
+		
+		for (int i = 0; i < resultados.length; i++) {
+			acuracias[i] = resultados[i].calcularAcuracia();
+			duracoes[i] = resultados[i].getDuracao();
+			reducoes[i] = resultados[i].calcularReducao();
+			qtdInstancias[i] = (double)resultados[i].getQtdInstancias();
+			regrasGeradas[i] = (double)resultados[i].getQtdRegras();	
 		}
 		
-		return Math.sqrt(aux1 / (valores.length - 1));
+		System.out.println("	Acurácia média: " + Utils.calculaMedia(acuracias));
+		System.out.println("	Desvio padrão: " + Utils.calculaDesvioPadrao(acuracias));
+		System.out.println("	Quantidade média de instâncias: " + Utils.calculaMedia(qtdInstancias));
+		System.out.println("	Quantidade média de regras geradas: " + Utils.calculaMedia(regrasGeradas));
+		System.out.println("	Tempo médio de execução: " + Utils.calcularTempoMedio(duracoes));
+		System.out.println("	Redução média: " + Utils.calculaMedia(reducoes));
 		
 	}
-	
-	private static double calculaMedia(double[] valores){
-
-		double somatorio = 0;
-		
-		for (int i = 0; i < valores.length; i++) {
-			somatorio += valores[i];						
-		}
-		
-		return somatorio/valores.length;
-		
-	}
-	
 	
 	private static Solution executaAG(Instances trainAg, Instances trainKnn, Configuracoes config) throws Exception{
 		
@@ -186,9 +184,9 @@ public class Main {
         
 		long fim  = System.currentTimeMillis(); 
         
-        System.out.println("	Tempo de seleção das instâncias (mm:ss.SSS) = " + new SimpleDateFormat("mm:ss.SSS").format(new Date(fim - inicio)));  
-        System.out.println("	Taxa de redução = " + (-1.0 * reductionRate));
-        System.out.println("	Acurácia de treinamento (KNN) = " + (-1.0 * accuracyTra));
+        System.out.println("	Tempo de seleção das instâncias (mm:ss.SSS) = " + Utils.calcularTempoExecucao(inicio, fim));  
+//        System.out.println("	Taxa de redução = " + (-1.0 * reductionRate));
+//        System.out.println("	Acurácia de treinamento (KNN) = " + (-1.0 * accuracyTra));
         
         return finalSolution;
 

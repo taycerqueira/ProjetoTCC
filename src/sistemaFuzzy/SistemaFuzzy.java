@@ -11,6 +11,7 @@ import net.sourceforge.jFuzzyLogic.rule.LinguisticTerm;
 import net.sourceforge.jFuzzyLogic.rule.Rule;
 import net.sourceforge.jFuzzyLogic.rule.RuleBlock;
 import net.sourceforge.jFuzzyLogic.rule.Variable;
+import utils.Utils;
 import utils.WekaUtils;
 import weka.core.Attribute;
 import weka.core.AttributeStats;
@@ -23,6 +24,9 @@ public class SistemaFuzzy {
 	private static int quantConjuntosFuzzy = 3;
 	private FIS jFuzzyLogic;
 	private String inferenceType;
+	private long tempoInicial; //tempo inicial da execução do algoritmo
+	private long tempoFinal; //tempo final da executação do algoritmo
+	private int tamanhoBaseRegras = 0;
 	
 	public static final java.lang.String INFERENCIA_GERAL = "geral";
 	public static final java.lang.String INFERENCIA_CLASSICA = "classica";
@@ -34,7 +38,23 @@ public class SistemaFuzzy {
 		this.inferenceType = inferenceType;
 		jFuzzyLogic = new FIS();
 	}
-	
+
+	public long getTempoInicial() {
+		return tempoInicial;
+	}
+
+	public void setTempoInicial(long tempoInicial) {
+		this.tempoInicial = tempoInicial;
+	}
+
+	public long getTempoFinal() {
+		return tempoFinal;
+	}
+
+	public void setTempoFinal(long tempoFinal) {
+		this.tempoFinal = tempoFinal;
+	}
+
 	/**
 	 * Executa e retorna a acurácia do sistema fuzzy
 	 * @param train Instâncias de treinamento para geração da base de regras
@@ -189,6 +209,7 @@ public class SistemaFuzzy {
 			
 			//Configurando o bloco de regras
 			RuleBlock ruleBlock = wm.generateRuleBlock(SistemaFuzzy.RULE_BLOCK_NAME, functionBlock, variaveis);
+			this.tamanhoBaseRegras = ruleBlock.getRules().size();
 			
 			//System.out.println("	Tamanho da base de regras: " + ruleBlock.getRules().size());
 			
@@ -348,6 +369,10 @@ public class SistemaFuzzy {
 			array[i] = 0;
 		}
 		return array;
+	}
+	
+	public int getamanhoBaseRegras(){
+		return this.tamanhoBaseRegras;
 	}
 
 }
