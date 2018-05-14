@@ -11,7 +11,6 @@ import net.sourceforge.jFuzzyLogic.rule.LinguisticTerm;
 import net.sourceforge.jFuzzyLogic.rule.Rule;
 import net.sourceforge.jFuzzyLogic.rule.RuleBlock;
 import net.sourceforge.jFuzzyLogic.rule.Variable;
-import utils.Utils;
 import utils.WekaUtils;
 import weka.core.Attribute;
 import weka.core.AttributeStats;

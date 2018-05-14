@@ -12,8 +12,8 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 				
-//		Configuracoes config = new Configuracoes("basefilmes_53atributos.arff", "polarity", 0.5, 0.3, 200, 1000);
-		Configuracoes config = new Configuracoes("weka-database/diabetes.arff", "class", 0.5, 0.3, 16, 1000);
+//		Configuracoes config = new Configuracoes("basefilmes_53atributos.arff", "polarity");
+		Configuracoes config = new Configuracoes("weka-database/iris.arff", "class");
 		
 		Instances instances = config.getInstances();      
 
