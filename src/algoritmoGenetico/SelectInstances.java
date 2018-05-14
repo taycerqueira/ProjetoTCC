@@ -31,11 +31,11 @@ public class SelectInstances extends Problem {
 //	        solution.setObjective(0, -1 * test[0]);
 //	        solution.setObjective(1, -1 * test[1]);
         	
-        	Resultado res = Utils.gerarResultadoKnn(trainFitnessAlgorithm, selectedInstances);
+        	Resultado res = Utils.gerarResultadoKnn(selectedInstances, trainFitnessAlgorithm);
         	res.setQtdInstanciasAntes(instances.size());
         	
-        	System.out.println("acuracia: " + res.calcularAcuracia());
-        	System.out.println("redução: " + res.calcularReducao());
+//        	System.out.println("acuracia: " + res.calcularAcuracia());
+//        	System.out.println("redução: " + res.calcularReducao());
         	
 	        solution.setObjective(0, -1 * res.calcularAcuracia());
 	        solution.setObjective(1, -1 * res.calcularReducao());

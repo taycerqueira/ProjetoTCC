@@ -6,14 +6,16 @@ public class Resultado {
 	private long tempoInicial;
 	private long tempoFinal;
 	private int qtdInstanciasAntes;
-	private int qtdInstancias;
+	private int qtdInstanciasTreinamento;
+	private int qtdInstanciasTeste;
 	private int qtdRegras;
 	private int fold;
 	
-	public Resultado() {
+	public Resultado(int qtdInstanciasTreinamento, int qtdInstanciasTeste) {
+		this.qtdInstanciasTreinamento = qtdInstanciasTreinamento;
+		this.qtdInstanciasTeste = qtdInstanciasTeste;
 		qtdAcertos = 0;
 		qtdInstanciasAntes = 0;
-		qtdInstancias = 0;
 		qtdRegras = 0;
 	}
 
@@ -49,6 +51,14 @@ public class Resultado {
 		this.qtdInstanciasAntes = qtdInstanciasAntes;
 	}
 	
+	public int getQtdInstanciasTeste() {
+		return qtdInstanciasTeste;
+	}
+
+	public void setQtdInstanciasTeste(int qtdInstanciasTeste) {
+		this.qtdInstanciasTeste = qtdInstanciasTeste;
+	}
+
 	public int getFold(){
 		return this.fold;
 	}
@@ -58,11 +68,11 @@ public class Resultado {
 	}
 
 	public int getQtdInstancias() {
-		return qtdInstancias;
+		return qtdInstanciasTreinamento;
 	}
 	
 	public void setQtdInstancias(int qtdInstancias) {
-		this.qtdInstancias = qtdInstancias;
+		this.qtdInstanciasTreinamento = qtdInstancias;
 	}
 	
 	public int getQtdRegras() {
@@ -86,7 +96,7 @@ public class Resultado {
 	}
 	
 	public double calcularAcuracia(){
-		return (double)qtdAcertos/(double)qtdInstancias;
+		return (double)qtdAcertos/(double)qtdInstanciasTeste;
 	}
 	
 	public double calcularReducao(){
@@ -94,7 +104,7 @@ public class Resultado {
 			return 0;
 		}
 		else{
-			return (qtdInstanciasAntes - qtdInstancias) / (double) qtdInstanciasAntes;
+			return (qtdInstanciasAntes - qtdInstanciasTreinamento) / (double) qtdInstanciasAntes;
 		}
 	}
 
