@@ -24,6 +24,8 @@ public abstract class Utils {
 	
 	public static Solution executarAG(Instances trainAg, Instances trainKnn, Configuracoes config) throws Exception{
 		
+		System.out.println("\nEXECUTANDO SELEÇÃO DE INSTÂNCIAS...");
+		
 		long inicio = System.currentTimeMillis(); 
 		
 		Problem problem = new SelectInstances(trainAg, trainKnn);

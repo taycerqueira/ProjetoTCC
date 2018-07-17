@@ -76,7 +76,6 @@ public class NSGAII_SelectInstances extends Algorithm {
 	        population.add(newSolution);              
 	    } 
 
-	    System.out.println("Executando seleção de instâncias...");
 	    // Generations 
 	    while (evaluations < maxEvaluations) {       
 	        // Create the offSpring solutionSet      

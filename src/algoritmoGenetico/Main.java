@@ -12,7 +12,7 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 				
-//		Configuracoes config = new Configuracoes("basefilmes_53atributos.arff", "polarity");
+//		Configuracoes config = new Configuracoes("polarity-dataset.arff", "polarity");
 		Configuracoes config = new Configuracoes("weka-database/iris.arff", "class");
 		
 		Instances instances = config.getInstances();      
@@ -25,9 +25,6 @@ public class Main {
 		randData.randomize(rand);         // randomize data with number generator
 
 		randData.stratify(folds);
-		
-//		double[] acuraciasSemOtimizacao = new double[folds];
-//		double[] acuraciasComOtimizacao = new double[folds];
 		
 		Resultado[] resultadosFuzzySemOtimizacao = new Resultado[folds];
 		Resultado[] resultadosFuzzyComOtimizacao = new Resultado[folds];
@@ -62,60 +59,59 @@ public class Main {
 			
 			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
 			
-			System.out.println("\nFUZZY: Executando com a base de dados completa...");
+			System.out.println("\nCLASSIFICAÇÃO FUZZY: Executando com a base de dados completa...");
 			
 			Resultado res1 = Utils.gerarResultadoFuzzy(trainAg, test);
 			resultadosFuzzySemOtimizacao[n] = res1;
 //			System.out.println("	Acertos: " + res1.getQtdAcertos());
-//			System.out.println("	Acurácia: " + res1.calcularAcuracia());
+			System.out.println("	Acurácia: " + res1.calcularAcuracia());
 			
-			System.out.println("\nKNN: Executando com a base de dados completa...");
-			Resultado res2 = Utils.gerarResultadoKnn(trainAg, test);
-			resultadosKnnSemOtimizacao[n] = res2;
+//			System.out.println("\nKNN: Executando com a base de dados completa...");
+//			Resultado res2 = Utils.gerarResultadoKnn(trainAg, test);
+//			resultadosKnnSemOtimizacao[n] = res2;
 //			System.out.println("	Acertos: " + res2.getQtdAcertos());
 //			System.out.println("	Acurácia: " + res2.calcularAcuracia());
 			
-			//----------------------- OTIMIZANDO A BASE DE DADOS COM O AG ----------------------------
+			//----------------------- SELEÇÃO DE INSTÂNCIAS ----------------------------
 			
 			//Executrar o AG e obter uma base otimizada
 //			System.out.println("\nAG: Executando algoritmo genético...");            
 			Solution solution = Utils.executarAG(trainAg, trainKnn, config);
 			
-			//---------------------- TESTES COM A BASE DE DADOS COMPLETA -----------------------------
+			//---------------------- TESTES COM A BASE DE DADOS REDUZIDA -----------------------------
 			
 			Instances selectedInstances = WekaUtils.getSelectedInstances(trainAg, solution);
-			System.out.println("\nFUZZY: Executando com a base de dados otimizada...");
+			System.out.println("\nCLASSIFICAÇÃO FUZZY: Executando com a base de dados reduzida...");
 			Resultado res3 = Utils.gerarResultadoFuzzy(selectedInstances, test);
 			resultadosFuzzyComOtimizacao[n] = res3;
 			res3.setQtdInstanciasAntes(trainAg.size());
 //			System.out.println("	Acertos: " + res3.getQtdAcertos());
-//			System.out.println("	Acurácia: " + res3.calcularAcuracia());
+			System.out.println("	Acurácia: " + res3.calcularAcuracia());
 			
-			System.out.println("\nKNN: Executando com a base de dados otimizada...");
-			Resultado res4 = Utils.gerarResultadoKnn(selectedInstances, test);
-			res4.setQtdInstanciasAntes(trainAg.size());
-			resultadosKnnComOtimizacao[n] = res4;
+//			System.out.println("\nKNN: Executando com a base de dados otimizada...");
+//			Resultado res4 = Utils.gerarResultadoKnn(selectedInstances, test);
+//			res4.setQtdInstanciasAntes(trainAg.size());
+//			resultadosKnnComOtimizacao[n] = res4;
 //			System.out.println("	Acertos: " + res4.getQtdAcertos());
 //			System.out.println("	Acurácia: " + res4.calcularAcuracia());
 			
 			//-----------------------------------------------------------------------------------------
 			
 			System.out.println("\n");
-			//System.exit(0);
 
 		}
 
 		System.out.println("=> RESULTADOS:");
-		System.out.println(" ---------------------- FUZZY ----------------------");
-		System.out.println("	-> ANTES");
+		System.out.println(" ---------------------- CLASSIFICAÇÃO FUZZY ----------------------");
+		System.out.println("	-> BASE DE DADOS ORIGINAL");
 		printResultados(resultadosFuzzySemOtimizacao);
-		System.out.println("	-> DEPOIS");
+		System.out.println("	-> BASE DE DADOS OTIMIZADA");
 		printResultados(resultadosFuzzyComOtimizacao);
-		System.out.println(" ---------------------- KNN ----------------------");
-		System.out.println("	-> ANTES");
-		printResultados(resultadosKnnSemOtimizacao);
-		System.out.println("	-> DEPOIS");
-		printResultados(resultadosKnnComOtimizacao);
+//		System.out.println(" ---------------------- KNN ----------------------");
+//		System.out.println("	-> ANTES");
+//		printResultados(resultadosKnnSemOtimizacao);
+//		System.out.println("	-> DEPOIS");
+//		printResultados(resultadosKnnComOtimizacao);
 	
 	}
 	
